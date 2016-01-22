@@ -5,10 +5,10 @@ import java.util.concurrent.Executors
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.pattern.ask
 import akka.util.Timeout
-import com.codahale.metrics.MetricRegistry
 import com.google.inject.name.Named
 import com.google.inject.{ AbstractModule, Provides, Scopes, Singleton }
 import mesosphere.marathon.event.{ MarathonSubscriptionEvent, Subscribe }
+import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.{ EntityStore, MarathonStore }
 import mesosphere.util.state.PersistentStore
 import org.apache.log4j.Logger
@@ -17,7 +17,6 @@ import org.rogach.scallop.ScallopConf
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import mesosphere.marathon.metrics.Metrics
 
 trait HttpEventConfiguration extends ScallopConf {
 
@@ -26,8 +25,16 @@ trait HttpEventConfiguration extends ScallopConf {
     required = false,
     noshort = true).map(parseHttpEventEndpoints)
 
+  lazy val httpEventCallbackSlowConsumerTimeout = opt[Long]("http_endpoint_slow_consumer_duration",
+    descr = "A http consumer is considered slow, if the delivery takes longer than this timeout (ms)",
+    required = false,
+    noshort = true,
+    default = Some(10.seconds.toMillis)
+  )
+
   private[this] def parseHttpEventEndpoints(str: String): List[String] =
     str.split(',').map(_.trim).toList
+
 }
 
 class HttpEventModule(httpEventConfiguration: HttpEventConfiguration) extends AbstractModule {
@@ -43,8 +50,9 @@ class HttpEventModule(httpEventConfiguration: HttpEventConfiguration) extends Ab
   @Provides
   @Named(HttpEventModule.StatusUpdateActor)
   def provideStatusUpdateActor(system: ActorSystem,
-                               @Named(HttpEventModule.SubscribersKeeperActor) subscribersKeeper: ActorRef): ActorRef = {
-    system.actorOf(Props(new HttpEventActor(subscribersKeeper)))
+                               @Named(HttpEventModule.SubscribersKeeperActor) subscribersKeeper: ActorRef,
+                               metrics: Metrics): ActorRef = {
+    system.actorOf(Props(new HttpEventActor(httpEventConfiguration, subscribersKeeper, metrics)))
   }
 
   @Provides
