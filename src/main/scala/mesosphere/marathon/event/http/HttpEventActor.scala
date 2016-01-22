@@ -82,7 +82,7 @@ class HttpEventActor(conf: HttpEventConfiguration, val subscribersKeeper: ActorR
     response.onComplete {
       case Success(res) =>
         if (res.status.isFailure) log.debug(s"No success response for post $event to $url")
-        val inTime = (currentTimeMillis() - start) < conf.httpEventCallbackSlowConsumerTimeout()
+        val inTime = (currentTimeMillis() - start) < conf.slowConsumerTimeout
         eventActor ! (if (inTime) NotificationSuccess(url) else NotificationSlow(url))
       case _ =>
         log.warning(s"Failed to post $event to $url")

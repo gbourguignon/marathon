@@ -35,6 +35,7 @@ trait HttpEventConfiguration extends ScallopConf {
   private[this] def parseHttpEventEndpoints(str: String): List[String] =
     str.split(',').map(_.trim).toList
 
+  def slowConsumerTimeout: Long = httpEventCallbackSlowConsumerTimeout()
 }
 
 class HttpEventModule(httpEventConfiguration: HttpEventConfiguration) extends AbstractModule {
