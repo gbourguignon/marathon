@@ -25,8 +25,8 @@ trait HttpEventConfiguration extends ScallopConf {
     required = false,
     noshort = true).map(parseHttpEventEndpoints)
 
-  lazy val httpEventCallbackSlowConsumerTimeout = opt[Long]("http_endpoint_slow_consumer_duration",
-    descr = "A http consumer is considered slow, if the delivery takes longer than this timeout (ms)",
+  lazy val httpEventCallbackSlowConsumerTimeout = opt[Long]("http_event_callback_slow_consumer_timeout",
+    descr = "A http event callback consumer is considered slow, if the delivery takes longer than this timeout (ms)",
     required = false,
     noshort = true,
     default = Some(10.seconds.toMillis)
@@ -43,6 +43,7 @@ class HttpEventModule(httpEventConfiguration: HttpEventConfiguration) extends Ab
   val log = Logger.getLogger(getClass.getName)
 
   def configure() {
+    bind(classOf[HttpEventActor.HttpEventActorMetrics]).in(Scopes.SINGLETON)
     bind(classOf[HttpCallbackEventSubscriber]).asEagerSingleton()
     bind(classOf[HttpCallbackSubscriptionService]).in(Scopes.SINGLETON)
     bind(classOf[HttpEventConfiguration]).toInstance(httpEventConfiguration)
@@ -52,7 +53,7 @@ class HttpEventModule(httpEventConfiguration: HttpEventConfiguration) extends Ab
   @Named(HttpEventModule.StatusUpdateActor)
   def provideStatusUpdateActor(system: ActorSystem,
                                @Named(HttpEventModule.SubscribersKeeperActor) subscribersKeeper: ActorRef,
-                               metrics: Metrics): ActorRef = {
+                               metrics: HttpEventActor.HttpEventActorMetrics): ActorRef = {
     system.actorOf(Props(new HttpEventActor(httpEventConfiguration, subscribersKeeper, metrics)))
   }
 

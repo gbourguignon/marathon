@@ -1,5 +1,8 @@
 package mesosphere.marathon.event.http
 
+import java.lang.System.currentTimeMillis
+import javax.inject.Inject
+
 import akka.actor._
 import akka.pattern.ask
 import mesosphere.marathon.api.v2.json.Formats._
@@ -13,26 +16,40 @@ import spray.httpx.PlayJsonSupport
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.Success
-import System.currentTimeMillis
+import scala.util.{ Failure, Success }
 
 object HttpEventActor {
   case class NotificationFailed(url: String)
   case class NotificationSuccess(url: String)
-  case class NotificationSlow(url: String)
 
-  case class EventNotificationLimit(failed: Long, deadLine: Option[Deadline]) {
+  case class EventNotificationLimit(failedCount: Long, backoffUntil: Option[Deadline]) {
     def nextFailed: EventNotificationLimit = {
-      val next = failed + 1
+      val next = failedCount + 1
       EventNotificationLimit(next, Some(math.pow(2, next.toDouble).seconds.fromNow))
     }
-    def notLimited: Boolean = deadLine.fold(true)(_.isOverdue())
+    def notLimited: Boolean = backoffUntil.fold(true)(_.isOverdue())
     def limited: Boolean = !notLimited
   }
   val NoLimit = EventNotificationLimit(0, None)
+
+  class HttpEventActorMetrics @Inject() (metrics: Metrics) {
+    // the number of requests that are open without response
+    val outstandingRequests = metrics.counter("service.mesosphere.marathon.event.http.outstanding-requests")
+    // the number of events that are broadcast
+    val sendEvent = metrics.meter("service.mesosphere.marathon.event.http.send")
+    // the number of events that are not send to callback listeners due to backoff
+    val droppedEvent = metrics.meter("service.mesosphere.marathon.event.http.dropped-events")
+    // the response time of the callback listeners
+    val responseTime = metrics.timer("service.mesosphere.marathon.event.http.response-time")
+  }
 }
 
-class HttpEventActor(conf: HttpEventConfiguration, val subscribersKeeper: ActorRef, metrics: Metrics)
+/**
+  * This actor subscribes to the event bus and distributes every event to all http callback listener.
+  * The list of active subscriptions is handled in the subscribersKeeper.
+  * If a callback handler can not be reached or is slow, an exponential backoff is applied.
+  */
+class HttpEventActor(conf: HttpEventConfiguration, val subscribersKeeper: ActorRef, metrics: HttpEventActorMetrics)
     extends Actor with ActorLogging with PlayJsonSupport {
 
   implicit val ec = HttpEventModule.executionContext
@@ -40,28 +57,21 @@ class HttpEventActor(conf: HttpEventConfiguration, val subscribersKeeper: ActorR
   val pipeline: HttpRequest => Future[HttpResponse] = addHeader("Accept", "application/json") ~> sendReceive
   var limiter = Map.empty[String, EventNotificationLimit].withDefaultValue(NoLimit)
 
-  //metrics
-  val metricOutstandingRequests = metrics.counter("service.mesosphere.marathon.event.http.outstanding-requests")
-  val metricSendEvent = metrics.meter("service.mesosphere.marathon.event.http.send")
-  val metricDroppedEvent = metrics.meter("service.mesosphere.marathon.event.http.dropped-events")
-  val metricResponseTime = metrics.timer("service.mesosphere.marathon.event.http.response-time")
-
   def receive: Receive = {
     case event: MarathonEvent     => broadcast(event)
     case NotificationSuccess(url) => limiter += url -> NoLimit
-    case NotificationSlow(url)    => limiter += url -> limiter(url).nextFailed
     case NotificationFailed(url)  => limiter += url -> limiter(url).nextFailed
     case _                        => log.warning("Message not understood!")
   }
 
   def broadcast(event: MarathonEvent): Unit = {
-    metricSendEvent.mark()
+    metrics.sendEvent.mark()
     log.info("POSTing to all endpoints.")
     val me = self
     (subscribersKeeper ? GetSubscribers).mapTo[EventSubscribers].foreach { subscribers =>
       val (active, limited) = subscribers.urls.partition(limiter(_).notLimited)
       if (limited.nonEmpty) log.info(s"Will not send event ${event.eventType} to unresponsive hosts: $limited")
-      metricDroppedEvent.mark(limited.size)
+      metrics.droppedEvent.mark(limited.size)
       active.foreach(post(_, event, me))
     }
   }
@@ -69,23 +79,25 @@ class HttpEventActor(conf: HttpEventConfiguration, val subscribersKeeper: ActorR
   def post(url: String, event: MarathonEvent, eventActor: ActorRef): Unit = {
     log.info("Sending POST to:" + url)
 
-    metricOutstandingRequests.inc()
+    metrics.outstandingRequests.inc()
     val request = Post(url, eventToJson(event))
     val response = pipeline(request)
     val start = currentTimeMillis()
 
     response.onComplete {
       case _ =>
-        metricOutstandingRequests.dec()
-        metricResponseTime.updateMillis(currentTimeMillis() - start)
+        metrics.outstandingRequests.dec()
+        metrics.responseTime.updateMillis(currentTimeMillis() - start)
     }
     response.onComplete {
-      case Success(res) =>
-        if (res.status.isFailure) log.debug(s"No success response for post $event to $url")
+      case Success(res) if res.status.isSuccess =>
         val inTime = (currentTimeMillis() - start) < conf.slowConsumerTimeout
-        eventActor ! (if (inTime) NotificationSuccess(url) else NotificationSlow(url))
-      case _ =>
-        log.warning(s"Failed to post $event to $url")
+        eventActor ! (if (inTime) NotificationSuccess(url) else NotificationFailed(url))
+      case Success(res) =>
+        log.warning(s"No success response for post $event to $url")
+        eventActor ! NotificationFailed(url)
+      case Failure(ex) =>
+        log.warning(s"Failed to post $event to $url because ${ex.getClass.getSimpleName}: ${ex.getMessage}")
         eventActor ! NotificationFailed(url)
     }
   }

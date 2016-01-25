@@ -42,7 +42,7 @@ class HttpEventActorTest extends MarathonSpec with Mockito with GivenWhenThen wi
 
     Then("The callback listener is rate limited")
     waitUntil("Wait for rate limiting 2 subscribers", 1.second) {
-      aut.underlyingActor.limiter("host1").deadLine.isDefined && aut.underlyingActor.limiter("host2").deadLine.isDefined
+      aut.underlyingActor.limiter("host1").backoffUntil.isDefined && aut.underlyingActor.limiter("host2").backoffUntil.isDefined
     }
   }
 
@@ -56,7 +56,7 @@ class HttpEventActorTest extends MarathonSpec with Mockito with GivenWhenThen wi
 
     Then("The callback listener is rate limited")
     waitUntil("Wait for rate limiting 1 subscriber", 5.second) {
-      aut.underlyingActor.limiter("host1").deadLine.isDefined
+      aut.underlyingActor.limiter("host1").backoffUntil.isDefined
     }
   }
 
@@ -81,7 +81,7 @@ class HttpEventActorTest extends MarathonSpec with Mockito with GivenWhenThen wi
   var response: HttpResponse = _
   var statusCode: StatusCode = _
   var responseAction = () => response
-  val metrics = new Metrics(new MetricRegistry)
+  val metrics = new HttpEventActor.HttpEventActorMetrics(new Metrics(new MetricRegistry))
   implicit val system = ActorSystem("test-system",
     ConfigFactory.parseString("""akka.loggers = ["akka.testkit.TestEventListener"]""")
   )
