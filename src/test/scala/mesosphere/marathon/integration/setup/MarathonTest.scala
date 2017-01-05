@@ -102,6 +102,7 @@ case class LocalMarathon(
     "hostname" -> "localhost",
     "logging_level" -> "debug",
     "offer_matching_timeout" -> 10.seconds.toMillis.toString // see https://github.com/mesosphere/marathon/issues/4920
+    "minimum_viable_task_execution_duration" -> "0"
   ) ++ conf
 
   val args = config.flatMap {
