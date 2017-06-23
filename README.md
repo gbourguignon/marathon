@@ -1,3 +1,12 @@
+# Criteo specifics
+
+## How to release custom criteo version
+
+* Make sure all necessary patches are on `criteo_build` branch.
+* Tag using the name of the version, for instance `1.4.3-criteo3`
+* Push the tag and for travis to publish a new version
+
+
 [![Stories in Ready](https://badge.waffle.io/mesosphere/marathon.png?label=ready&title=Ready)](https://waffle.io/mesosphere/marathon)
 # [Marathon](https://mesosphere.github.io/marathon/) [![Build Status](https://jenkins.mesosphere.com/service/jenkins/buildStatus/icon?job=marathon-pipelines/releases%2F1.4)](https://jenkins.mesosphere.com/service/jenkins/view/Marathon/job/marathon-pipelines/job/releases%252F1.4/) [![Coverage Status](https://coveralls.io/repos/mesosphere/marathon/badge.svg?branch=master)](https://coveralls.io/r/mesosphere/marathon?branch=master)
 
