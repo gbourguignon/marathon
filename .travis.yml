@@ -32,4 +32,4 @@ deploy:
   file: "marathon-$VERSION.tgz"
   on:
     repo: criteo-forks/marathon
-    branch: criteo_build
+    tags: true
