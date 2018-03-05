@@ -1,3 +1,6 @@
+
+# any change to this file upstream will conflict when we merge changes
+# deploy section has to remain intact but the rest can be resolved using upstream version
 sudo: false
 language: scala
 jdk:
@@ -9,12 +12,20 @@ cache:
     - $HOME/.sbt
     - $HOME/.ivy2
 script:
-  - sbt clean scapegoat doc coverage test
+  - sbt clean universal:packageZipTarball
 before_script: # the automated download fails sometimes
     - mkdir -p $HOME/.sbt/launchers/0.13.11/
     - test -r $HOME/.sbt/launchers/0.13.11/sbt-launch.jar || curl -L -o $HOME/.sbt/launchers/0.13.11/sbt-launch.jar http://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.11/sbt-launch.jar
-after_success:
-  - sbt coverageReport coveralls
-notifications:
-  slack:
-    secure: apUObVUa/OhaTEvoYw3oM1ZTTT0LtYolofJYqnWiBOusc6qgMlK2rfk5kod7vDn33cSKwGhFcyVrrFCn2qxuvYUWCpK4Yo6Hj7KIjoqMi9yHLHXAAWIfAFNMlCdaUGjlHLWn757rBkbuQUDVH8HmB6Vc3J3sybTbiFmMDP1cEVo=
+    - ./patch_version.sh
+before_deploy:
+  - cp target/universal/marathon*.tgz .
+deploy:
+  skip_cleanup: true
+  provider: releases
+  api_key:
+    secure: geOsznYimDVjY54rYF5K205bjt+Q/vZRa7trLq8IKSxf/NiZb4ZiQzPcFfQ4328nA++7+NSW697YwpdJiB4M+21FEcpsB4kLPqrqr92o8u12Zgn5wOJUmNi1wrJyKjO5pScB6qf7Ev8hvpXCvAVRK7tltRfLT2xYQ+JGXYuiForHd4yMbK6WFOvi0zjkUjqosdffAb9SqbmKmI2K0VGP/5q90ZfShmEAk4WYth+dECloVhvBksqcRympL5VijM2cq4MrY/NMDznyX9VvmpQiae+Q1A4fhrUfPTPVmDJStZlIVXwIFNFVZJdXeUZOyafKMOaCU5XB9LFrkX2NlaGjEtWYSBP3uGm0/uApzNCTJ2OodT5WMqeuQTCLbmQbfOfstyeCx/g+YzmVhgK5EiWWPLrfIzucj2P2uEtt0mBlMiw4Ts+Maw5ehMVb+pEMHDVAneMyZw8zyd3EvG6RLnO05kgLmy5gS7ozHhyPFG57xcclKzZ9eV8rHbiCxPrvuAyCwfdM3hp9/A10u+CkQCr43KIPrcTsREbMAkcdmHh5jM0AGw5zcUlGSIZNDQ/soNfLqaBAESpvFW4c4Ak7CIr8HxV1imiBgn3PnwHeWTz4wlcAflxPb7DGbCReyMIOfW+RNzIpCorxfXi5xg29Q7OSRH+rGA3vtcA4IwY8vAPsriU=
+  file_glob: true
+  file: "marathon-*.tgz"
+  on:
+    repo: criteo-forks/marathon
+    tags: true
