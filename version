@@ -12,10 +12,16 @@ BRANCH_POINT=da9365d
 # Number of commits since branch point
 COMMIT_NUMBER="$(git rev-list --count --first-parent $BRANCH_POINT..HEAD)"
 COMMIT_HASH=$(git rev-parse --short HEAD)
-
+COMMIT_TAG=$(git describe --tags HEAD | sed -E 's/^v//')
 # Echo commit hash
 if [ "$#" -eq 1 ] && [ "$1" == "commit" ]; then
     echo "$COMMIT_HASH"
+    exit 0
+fi
+
+# Echo commit tag
+if [ "$#" -eq 1 ] && [ "$1" == "tag" ]; then
+    echo "$COMMIT_TAG"
     exit 0
 fi
 
