@@ -258,7 +258,8 @@ object TaskBuilder {
         "MARATHON_APP_RESOURCE_CPUS" -> Some(runSpec.resources.cpus.toString),
         "MARATHON_APP_RESOURCE_MEM" -> Some(runSpec.resources.mem.toString),
         "MARATHON_APP_RESOURCE_DISK" -> Some(runSpec.resources.disk.toString),
-        "MARATHON_APP_RESOURCE_GPUS" -> Some(runSpec.resources.gpus.toString)
+        "MARATHON_APP_RESOURCE_GPUS" -> Some(runSpec.resources.gpus.toString),
+        "MARATHON_APP_RESOURCE_NETWORK_BANDWIDTH" -> Some(runSpec.resources.networkBandwidth.toString)
       ).collect {
           case (key, Some(value)) => key -> value
         }(collection.breakOut)
