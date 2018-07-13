@@ -84,7 +84,7 @@ object MarathonTestHelper {
   val frameworkID: FrameworkID = FrameworkID("marathon")
   val frameworkId: FrameworkId = FrameworkId("").mergeFromProto(frameworkID)
 
-  def makeBasicOffer(cpus: Double = 4.0, mem: Double = 16000, disk: Double = 1.0,
+  def makeBasicOffer(cpus: Double = 4.0, mem: Double = 16000, disk: Double = 1.0, networkBandwidth: Double = 100000.0,
     beginPort: Int = 31000, endPort: Int = 32000, role: String = ResourceRole.Unreserved,
     reservation: Option[ReservationLabels] = None, gpus: Double = 0.0): Offer.Builder = {
 
@@ -108,6 +108,7 @@ object MarathonTestHelper {
     val gpuResource = heedReserved(ScalarResource(Resource.GPUS, gpus, role = role))
     val memResource = heedReserved(ScalarResource(Resource.MEM, mem, role = role))
     val diskResource = heedReserved(ScalarResource(Resource.DISK, disk, role = role))
+    val networkBandwidthResource = heedReserved(ScalarResource(Resource.NETWORK_BANDWIDTH, networkBandwidth, role = role))
     val portsResource = if (beginPort <= endPort) {
       Some(heedReserved(RangesResource(
         Resource.PORTS,
@@ -126,6 +127,7 @@ object MarathonTestHelper {
       .addResources(gpuResource)
       .addResources(memResource)
       .addResources(diskResource)
+      .addResources(networkBandwidthResource)
 
     portsResource.foreach(offerBuilder.addResources)
 
@@ -303,7 +305,7 @@ object MarathonTestHelper {
     offerBuilder
   }
 
-  def makeBasicOfferWithRole(cpus: Double, mem: Double, disk: Double,
+  def makeBasicOfferWithRole(cpus: Double, mem: Double, disk: Double, networkBandwidth: Double,
     beginPort: Int, endPort: Int, role: String) = {
     val portsResource = RangesResource(
       Resource.PORTS,
@@ -313,6 +315,7 @@ object MarathonTestHelper {
     val cpusResource = ScalarResource(Resource.CPUS, cpus, role)
     val memResource = ScalarResource(Resource.MEM, mem, role)
     val diskResource = ScalarResource(Resource.DISK, disk, role)
+    val networkBandwidthResource = ScalarResource(Resource.NETWORK_BANDWIDTH, networkBandwidth, role)
     Offer.newBuilder
       .setId(OfferID("1"))
       .setFrameworkId(frameworkID)
