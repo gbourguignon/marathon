@@ -355,6 +355,7 @@ object TaskGroupBuilder extends StrictLogging {
     consumer.consumeMem(container.resources.mem).foreach(builder.addResources)
     consumer.consumeDisk(container.resources.disk).foreach(builder.addResources)
     consumer.consumeGpus(container.resources.gpus.toDouble).foreach(builder.addResources)
+    consumer.consumeNetworkBandwidth(container.resources.networkBandwidth.toDouble).foreach(builder.addResources)
 
     if (container.labels.nonEmpty)
       builder.setLabels(mesos.Labels.newBuilder.addAllLabels(container.labels.map {
@@ -411,6 +412,7 @@ object TaskGroupBuilder extends StrictLogging {
     consumer.consumeMem(podDefinition.executorResources.mem).foreach(executorInfo.addResources)
     consumer.consumeDisk(podDefinition.executorResources.disk).foreach(executorInfo.addResources)
     consumer.consumeGpus(podDefinition.executorResources.gpus.toDouble).foreach(executorInfo.addResources)
+    consumer.consumeNetworkBandwidth(podDefinition.executorResources.networkBandwidth.toDouble).foreach(executorInfo.addResources)
     executorInfo.addAllResources(portsMatch.resources.asJava)
 
     if (podDefinition.networks.nonEmpty || podDefinition.volumes.nonEmpty) {
@@ -661,7 +663,8 @@ object TaskGroupBuilder extends StrictLogging {
       "MARATHON_CONTAINER_RESOURCE_CPUS" -> Some(container.resources.cpus.toString),
       "MARATHON_CONTAINER_RESOURCE_MEM" -> Some(container.resources.mem.toString),
       "MARATHON_CONTAINER_RESOURCE_DISK" -> Some(container.resources.disk.toString),
-      "MARATHON_CONTAINER_RESOURCE_GPUS" -> Some(container.resources.gpus.toString)
+      "MARATHON_CONTAINER_RESOURCE_GPUS" -> Some(container.resources.gpus.toString),
+      "MARATHON_CONTAINER_RESOURCE_NETWORK_BANDWIDTH" -> Some(container.resources.networkBandwidth.toString)
     ).collect {
         case (key, Some(value)) => key -> value
       }
