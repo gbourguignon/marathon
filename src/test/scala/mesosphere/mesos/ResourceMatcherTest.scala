@@ -63,11 +63,17 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
       res.hostPorts should have size 2
     }
 
-    "match resources success" in {
-      val offer = MarathonTestHelper.makeBasicOffer().build()
+    "match with app.network_bandwidth == 0, even if no network bandwidth resource is contained in the offer" in {
+      val offerBuilder = MarathonTestHelper.makeBasicOffer()
+      val networkBandwidthResourceIndex = offerBuilder.getResourcesList.toIndexedSeq.indexWhere(_.getName == "network_bandwidth")
+      offerBuilder.removeResources(networkBandwidthResourceIndex)
+      val offer = offerBuilder.build()
+
+      offer.getResourcesList.find(_.getName == "network_bandwidth") should be('empty)
+
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -79,6 +85,28 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
       res.scalarMatch(Resource.CPUS).get.roles should be(Seq(ResourceRole.Unreserved))
       res.scalarMatch(Resource.MEM).get.roles should be(Seq(ResourceRole.Unreserved))
       res.scalarMatch(Resource.DISK) should be(empty)
+      res.scalarMatch(Resource.NETWORK_BANDWIDTH) should be(empty)
+
+      res.hostPorts should have size 2
+    }
+
+    "match resources success" in {
+      val offer = MarathonTestHelper.makeBasicOffer().build()
+      val app = AppDefinition(
+        id = "/test".toRootPath,
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 1000),
+        portDefinitions = PortDefinitions(0, 0)
+      )
+
+      val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector, config, Seq.empty)
+
+      resourceMatchResponse shouldBe a[ResourceMatchResponse.Match]
+      val res = resourceMatchResponse.asInstanceOf[ResourceMatchResponse.Match].resourceMatch
+
+      res.scalarMatch(Resource.CPUS).get.roles should be(Seq(ResourceRole.Unreserved))
+      res.scalarMatch(Resource.MEM).get.roles should be(Seq(ResourceRole.Unreserved))
+      res.scalarMatch(Resource.DISK) should be(empty)
+      res.scalarMatch(Resource.NETWORK_BANDWIDTH).get.roles should be(Seq(ResourceRole.Unreserved))
 
       res.hostPorts should have size 2
     }
@@ -323,7 +351,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
       val offer = MarathonTestHelper.makeBasicOffer(role = "marathon").build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 1000),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -336,6 +364,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
 
       res.scalarMatch(Resource.CPUS).get.roles should be(Seq("marathon"))
       res.scalarMatch(Resource.MEM).get.roles should be(Seq("marathon"))
+      res.scalarMatch(Resource.NETWORK_BANDWIDTH).get.roles should be(Seq("marathon"))
       res.scalarMatch(Resource.DISK) should be(empty)
     }
 
@@ -413,6 +442,18 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         portDefinitions = PortDefinitions(0, 0)
       )
 
+      val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector, config, Seq.empty)
+
+      resourceMatchResponse shouldBe a[ResourceMatchResponse.NoMatch]
+    }
+
+    "match resources fail on network bandwidth" in {
+      val offer = MarathonTestHelper.makeBasicOffer(networkBandwidth = 0.1).build()
+      val app = AppDefinition(
+        id = "/test".toRootPath,
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 100),
+        portDefinitions = PortDefinitions(0, 0)
+      )
       val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector, config, Seq.empty)
 
       resourceMatchResponse shouldBe a[ResourceMatchResponse.NoMatch]
@@ -529,11 +570,11 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
       noMatch.reasons should contain(NoOfferMatchReason.UnfulfilledRole)
     }
 
-    "resource matcher should respond with all NoOfferMatchReason.Insufficient{Cpus, Memory, Gpus, Disk} if mismatches" in {
-      val offer = MarathonTestHelper.makeBasicOffer(cpus = 1, mem = 1, disk = 1, gpus = 1).build()
+    "resource matcher should respond with all NoOfferMatchReason.Insufficient{Cpus, Memory, Gpus, Disk, NetworkBandwidth} if mismatches" in {
+      val offer = MarathonTestHelper.makeBasicOffer(cpus = 1, mem = 1, disk = 1, gpus = 1, networkBandwidth = 1).build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 2, mem = 2, disk = 2, gpus = 2) // make sure it mismatches
+        resources = Resources(cpus = 2, mem = 2, disk = 2, gpus = 2, networkBandwidth = 2) // make sure it mismatches
       )
 
       val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector, config, Seq.empty)
@@ -542,7 +583,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
       val noMatch = resourceMatchResponse.asInstanceOf[ResourceMatchResponse.NoMatch]
 
       noMatch.reasons should contain allOf (NoOfferMatchReason.InsufficientCpus, NoOfferMatchReason.InsufficientMemory,
-        NoOfferMatchReason.InsufficientGpus, NoOfferMatchReason.InsufficientDisk)
+        NoOfferMatchReason.InsufficientGpus, NoOfferMatchReason.InsufficientDisk, NoOfferMatchReason.InsufficientNetworkBandwidth)
     }
 
     "resource matcher should respond with NoOfferMatchReason.InsufficientPorts if ports mismatch and other requirements matches" in {
@@ -1025,13 +1066,13 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
       val gpuApp = AppDefinition(
         id = "/gpu".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -1064,13 +1105,13 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
       val gpuApp = AppDefinition(
         id = "/gpu".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -1148,7 +1189,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -1174,7 +1215,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 2),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 2, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
