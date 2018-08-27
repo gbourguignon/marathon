@@ -55,6 +55,7 @@ trait AppConversion extends ConstraintConversion with EnvVarConversion with Heal
       executor = app.executor,
       fetch = app.fetch.toRaml,
       gpus = app.resources.gpus,
+      networkBandwidth = app.resources.networkBandwidth,
       healthChecks = app.healthChecks.toRaml,
       instances = app.instances,
       ipAddress = None, // deprecated field
@@ -80,12 +81,13 @@ trait AppConversion extends ConstraintConversion with EnvVarConversion with Heal
     )
   }
 
-  def resources(cpus: Option[Double], mem: Option[Double], disk: Option[Double], gpus: Option[Int]): Resources =
+  def resources(cpus: Option[Double], mem: Option[Double], disk: Option[Double], gpus: Option[Int], networkBandwidth: Option[Int]): Resources =
     Resources(
       cpus = cpus.getOrElse(App.DefaultCpus),
       mem = mem.getOrElse(App.DefaultMem),
       disk = disk.getOrElse(App.DefaultDisk),
-      gpus = gpus.getOrElse(App.DefaultGpus)
+      gpus = gpus.getOrElse(App.DefaultGpus),
+      networkBandwidth = networkBandwidth.getOrElse(App.DefaultNetworkBandwidth)
     )
 
   implicit val taskLostBehaviorReader: Reads[TaskLostBehavior, ResidencyDefinition.TaskLostBehavior] = Reads { taskLost =>
@@ -147,7 +149,7 @@ trait AppConversion extends ConstraintConversion with EnvVarConversion with Heal
       user = app.user,
       env = Raml.fromRaml(app.env),
       instances = app.instances,
-      resources = resources(Some(app.cpus), Some(app.mem), Some(app.disk), Some(app.gpus)),
+      resources = resources(Some(app.cpus), Some(app.mem), Some(app.disk), Some(app.gpus), Some(app.networkBandwidth)),
       executor = app.executor,
       constraints = app.constraints.map(Raml.fromRaml(_))(collection.breakOut),
       fetch = app.fetch.map(Raml.fromRaml(_)),
@@ -188,6 +190,7 @@ trait AppConversion extends ConstraintConversion with EnvVarConversion with Heal
       mem = update.mem.getOrElse(app.mem),
       disk = update.disk.getOrElse(app.disk),
       gpus = update.gpus.getOrElse(app.gpus),
+      networkBandwidth = update.networkBandwidth.getOrElse(app.networkBandwidth),
       executor = update.executor.getOrElse(app.executor),
       constraints = update.constraints.getOrElse(app.constraints),
       fetch = update.fetch.getOrElse(app.fetch),
