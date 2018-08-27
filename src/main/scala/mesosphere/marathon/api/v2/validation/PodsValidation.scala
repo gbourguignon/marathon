@@ -33,6 +33,7 @@ trait PodsValidation extends GeneralPurposeCombinators {
     resource.mem should be >= 0.0
     resource.disk should be >= 0.0
     resource.gpus should be >= 0
+    resource.networkBandwidth should be >= 0
   }
 
   def httpHealthCheckValidator(endpoints: Seq[Endpoint]) = validator[HttpHealthCheck] { hc =>
