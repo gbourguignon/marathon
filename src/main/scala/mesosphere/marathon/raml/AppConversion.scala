@@ -333,6 +333,7 @@ trait AppConversion extends ConstraintConversion with EnvVarConversion with Heal
       maxLaunchDelaySeconds = service.whenOrElse(_.hasMaxLaunchDelay, m => (m.getMaxLaunchDelay / 1000L).toInt, App.DefaultMaxLaunchDelaySeconds),
       mem = resourcesMap.getOrElse(Resource.MEM, App.DefaultMem),
       gpus = resourcesMap.get(Resource.GPUS).fold(App.DefaultGpus)(_.toInt),
+      networkBandwidth = resourcesMap.get(Resource.NETWORK_BANDWIDTH).fold(App.DefaultNetworkBandwidth)(_.toInt),
       ipAddress = service.when(_.hasOBSOLETEIpAddress, _.getOBSOLETEIpAddress.toRaml).orElse(App.DefaultIpAddress),
       networks = service.whenOrElse(_.getNetworksCount > 0, _.getNetworksList.toRaml, App.DefaultNetworks),
       ports = None, // not stored in protobuf
@@ -384,6 +385,7 @@ trait AppConversion extends ConstraintConversion with EnvVarConversion with Heal
       mem = Some(app.mem),
       disk = Some(app.disk),
       gpus = Some(app.gpus),
+      networkBandwidth = Some(app.networkBandwidth),
       executor = Some(app.executor),
       constraints = Some(app.constraints),
       fetch = Some(app.fetch),
