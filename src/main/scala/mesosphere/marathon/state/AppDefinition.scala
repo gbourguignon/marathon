@@ -150,6 +150,7 @@ case class AppDefinition(
     val memResource = ScalarResource(Resource.MEM, resources.mem)
     val diskResource = ScalarResource(Resource.DISK, resources.disk)
     val gpusResource = ScalarResource(Resource.GPUS, resources.gpus.toDouble)
+    val networkBandwidthResource = ScalarResource(Resource.NETWORK_BANDWIDTH, resources.networkBandwidth.toDouble)
     val appLabels = labels.map {
       case (key, value) =>
         mesos.Parameter.newBuilder
@@ -173,6 +174,7 @@ case class AppDefinition(
       .addResources(memResource)
       .addResources(diskResource)
       .addResources(gpusResource)
+      .addResources(networkBandwidthResource)
       .addAllHealthChecks(healthChecks.map(_.toProto).asJava)
       .setUpgradeStrategy(upgradeStrategy.toProto)
       .addAllDependencies(dependencies.map(_.toString).asJava)
@@ -293,7 +295,8 @@ case class AppDefinition(
         cpus = resourcesMap.getOrElse(Resource.CPUS, this.resources.cpus),
         mem = resourcesMap.getOrElse(Resource.MEM, this.resources.mem),
         disk = resourcesMap.getOrElse(Resource.DISK, this.resources.disk),
-        gpus = resourcesMap.getOrElse(Resource.GPUS, this.resources.gpus.toDouble).toInt
+        gpus = resourcesMap.getOrElse(Resource.GPUS, this.resources.gpus.toDouble).toInt,
+        networkBandwidth = resourcesMap.getOrElse(Resource.NETWORK_BANDWIDTH, this.resources.networkBandwidth.toDouble).toInt
       ),
       env = envMap ++ envRefs,
       fetch = proto.getCmd.getUrisList.map(FetchUri.fromProto)(collection.breakOut),
@@ -574,6 +577,7 @@ object AppDefinition extends GeneralPurposeCombinators {
     appDef.instances should be >= 0
     appDef.resources.disk as "disk" should be >= 0.0
     appDef.resources.gpus as "gpus" should be >= 0
+    appDef.resources.networkBandwidth as "networkBandwidth" should be >= 0
     appDef.secrets is valid(Secret.secretsValidator)
     appDef.secrets is empty or featureEnabled(enabledFeatures, Features.SECRETS)
     appDef.env is valid(EnvVarValue.envValidator)
@@ -620,6 +624,7 @@ object AppDefinition extends GeneralPurposeCombinators {
           from.resources.mem == to.resources.mem &&
           from.resources.disk == to.resources.disk &&
           from.resources.gpus == to.resources.gpus &&
+          from.resources.networkBandwidth == to.resources.networkBandwidth &&
           from.hostPorts.flatten.toSet == to.hostPorts.flatten.toSet &&
           from.requirePorts == to.requirePorts
       }
