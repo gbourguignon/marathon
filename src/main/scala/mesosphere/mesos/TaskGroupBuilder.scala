@@ -114,7 +114,7 @@ object TaskGroupBuilder extends StrictLogging {
       mem: List[(BigDecimal, mesos.Resource)],
       disk: List[(BigDecimal, mesos.Resource)],
       gpus: List[(BigDecimal, mesos.Resource)],
-      network_bandwidth: List[(BigDecimal, mesos.Resource)])
+      networkBandwidth: List[(BigDecimal, mesos.Resource)])
 
   private class ResourceConsumer(initial: Resources) {
     private var cpus = initial.cpus
