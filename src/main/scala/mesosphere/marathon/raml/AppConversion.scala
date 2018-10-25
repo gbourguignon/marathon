@@ -50,6 +50,7 @@ trait AppConversion extends DefaultConversions with ConstraintConversion with En
       executor = app.executor,
       fetch = app.fetch.toRaml,
       gpus = app.resources.gpus,
+      networkBandwidth = app.resources.networkBandwidth,
       healthChecks = app.healthChecks.toRaml,
       instances = app.instances,
       ipAddress = None, // deprecated field
@@ -84,12 +85,13 @@ trait AppConversion extends DefaultConversions with ConstraintConversion with En
     )
   }
 
-  def resources(cpus: Option[Double], mem: Option[Double], disk: Option[Double], gpus: Option[Int]): Resources =
+  def resources(cpus: Option[Double], mem: Option[Double], disk: Option[Double], gpus: Option[Int], networkBandwidth: Option[Int]): Resources =
     Resources(
       cpus = cpus.getOrElse(App.DefaultCpus),
       mem = mem.getOrElse(App.DefaultMem),
       disk = disk.getOrElse(App.DefaultDisk),
-      gpus = gpus.getOrElse(App.DefaultGpus)
+      gpus = gpus.getOrElse(App.DefaultGpus),
+      networkBandwidth = networkBandwidth.getOrElse(App.DefaultNetworkBandwidth)
     )
 
   implicit val taskLostBehaviorReader: Reads[TaskLostBehavior, ResidencyDefinition.TaskLostBehavior] = Reads { taskLost =>
@@ -143,7 +145,7 @@ trait AppConversion extends DefaultConversions with ConstraintConversion with En
       user = app.user,
       env = Raml.fromRaml(app.env),
       instances = app.instances,
-      resources = resources(Some(app.cpus), Some(app.mem), Some(app.disk), Some(app.gpus)),
+      resources = resources(Some(app.cpus), Some(app.mem), Some(app.disk), Some(app.gpus), Some(app.networkBandwidth)),
       executor = app.executor,
       constraints = app.constraints.map(Raml.fromRaml(_))(collection.breakOut),
       fetch = app.fetch.map(Raml.fromRaml(_)),
@@ -184,6 +186,7 @@ trait AppConversion extends DefaultConversions with ConstraintConversion with En
       mem = update.mem.getOrElse(app.mem),
       disk = update.disk.getOrElse(app.disk),
       gpus = update.gpus.getOrElse(app.gpus),
+      networkBandwidth = update.networkBandwidth.getOrElse(app.networkBandwidth),
       executor = update.executor.getOrElse(app.executor),
       constraints = update.constraints.getOrElse(app.constraints),
       fetch = update.fetch.getOrElse(app.fetch),
@@ -341,6 +344,7 @@ trait AppConversion extends DefaultConversions with ConstraintConversion with En
       maxLaunchDelaySeconds = service.whenOrElse(_.hasMaxLaunchDelay, m => (m.getMaxLaunchDelay / 1000L).toInt, App.DefaultMaxLaunchDelaySeconds),
       mem = resourcesMap.getOrElse(Resource.MEM, App.DefaultMem),
       gpus = resourcesMap.get(Resource.GPUS).fold(App.DefaultGpus)(_.toInt),
+      networkBandwidth = resourcesMap.get(Resource.NETWORK_BANDWIDTH).fold(App.DefaultNetworkBandwidth)(_.toInt),
       ipAddress = service.when(_.hasOBSOLETEIpAddress, _.getOBSOLETEIpAddress.toRaml).orElse(App.DefaultIpAddress),
       networks = service.whenOrElse(_.getNetworksCount > 0, _.getNetworksList.toRaml, App.DefaultNetworks),
       ports = None, // not stored in protobuf
@@ -392,6 +396,7 @@ trait AppConversion extends DefaultConversions with ConstraintConversion with En
       mem = Some(app.mem),
       disk = Some(app.disk),
       gpus = Some(app.gpus),
+      networkBandwidth = Some(app.networkBandwidth),
       executor = Some(app.executor),
       constraints = Some(app.constraints),
       fetch = Some(app.fetch),

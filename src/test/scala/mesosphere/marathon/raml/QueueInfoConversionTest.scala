@@ -69,6 +69,7 @@ class QueueInfoConversionTest extends UnitTest {
         DeclinedOfferStep("InsufficientDisk", 10, 33), // 33 - 10 = 23
         DeclinedOfferStep("InsufficientGpus", 0, 23),
         DeclinedOfferStep("InsufficientPorts", 0, 23),
+        DeclinedOfferStep("InsufficientNetworkBandwidth", 0, 23),
         DeclinedOfferStep("DeclinedScarceResources", 0, 23)
       )
       val lastOffersSummary: Seq[DeclinedOfferStep] = List(
@@ -81,6 +82,7 @@ class QueueInfoConversionTest extends UnitTest {
         DeclinedOfferStep("InsufficientDisk", 0, 0),
         DeclinedOfferStep("InsufficientGpus", 0, 0),
         DeclinedOfferStep("InsufficientPorts", 0, 0),
+        DeclinedOfferStep("InsufficientNetworkBandwidth", 0, 0),
         DeclinedOfferStep("DeclinedScarceResources", 0, 0)
       )
 
