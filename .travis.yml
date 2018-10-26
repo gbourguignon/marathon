@@ -20,7 +20,7 @@ before_script: # the automated download fails sometimes
 after_success:
 - sbt coverageReport coveralls
 before_deploy:
-  - export RELEASE_JAR_FILE=$(ls target/scala*/marathon-*.jar)
+  - export RELEASE_JAR_FILE=$(ls target/scala*/marathon*.jar)
   - export VERSION=$(echo $TRAVIS_TAG | sed 's/^v//' )
   - echo "deploying $RELEASE_PKG_FILE to GitHub releases"
   - tar czvf marathon-$VERSION.tgz $RELEASE_JAR_FILE
