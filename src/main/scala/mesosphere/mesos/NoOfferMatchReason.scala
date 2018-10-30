@@ -32,7 +32,7 @@ object NoOfferMatchReason {
     InsufficientDisk,
     InsufficientGpus,
     InsufficientNetworkBandwidth,
-    InsufficientPorts
+    InsufficientPorts,
     DeclinedScarceResources
   )
 

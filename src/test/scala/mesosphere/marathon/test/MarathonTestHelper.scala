@@ -322,6 +322,7 @@ object MarathonTestHelper {
       .addResources(memResource)
       .addResources(diskResource)
       .addResources(portsResource)
+      .addResources(networkBandwidthResource)
   }
 
   def makeOneCPUTask(taskId: String): TaskInfo.Builder = makeOneCPUTask(TaskID.newBuilder().setValue(taskId).build())

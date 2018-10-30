@@ -574,6 +574,7 @@ object AppDefinition extends GeneralPurposeCombinators {
     appDef.instances should be >= 0
     appDef.resources.disk as "disk" should be >= 0.0
     appDef.resources.gpus as "gpus" should be >= 0
+    appDef.resources.networkBandwidth as "network_bandwidth" should be >= 0
     appDef.secrets is valid(Secret.secretsValidator)
     appDef.secrets is empty or featureEnabled(enabledFeatures, Features.SECRETS)
     appDef.env is valid(EnvVarValue.envValidator)

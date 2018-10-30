@@ -295,6 +295,11 @@ trait PodsValidation extends GeneralPurposeCombinators {
         from.resources.gpus == to.resources.gpus
       }
 
+    val changeNoNetworkBandwidthResource =
+      isTrue[PodDefinition](NetworkBandwidthPersistentVolumes) { to =>
+        from.resources.networkBandwidth == to.resources.networkBandwidth
+      }
+
     val changeNoHostPort =
       isTrue[PodDefinition](HostPortsPersistentVolumes) { to =>
         val fromHostPorts = from.containers.flatMap(_.endpoints.flatMap(_.hostPort)).toSet
@@ -308,6 +313,7 @@ trait PodsValidation extends GeneralPurposeCombinators {
       pod should changeNoMemResource
       pod should changeNoDiskResource
       pod should changeNoGpuResource
+      pod should changeNoNetworkBandwidthResource
       pod should changeNoHostPort
       pod.upgradeStrategy is state.UpgradeStrategy.validForResidentTasks
     }
@@ -338,6 +344,7 @@ object PodsValidationMessages {
   val MemPersistentVolumes = "mem cannot be updated if a pod has persistent volumes"
   val DiskPersistentVolumes = "disk cannot be updated if a pod has persistent volumes"
   val GpusPersistentVolumes = "gpus cannot be updated if a pod has persistent volumes"
+  val NetworkBandwidthPersistentVolumes = "network_bandwidth cannot be updated if a pod has persistent volumes"
   val HostPortsPersistentVolumes = "host ports cannot be updated if a pod has persistent volumes"
   // Note: we should keep this in sync with AppValidationMessages
   val NetworkNameRequiredForMultipleContainerNetworks =
