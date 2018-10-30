@@ -5,6 +5,7 @@
   "mem": 128,
   "disk": 100,
   "gpus": 0,
+  "network_bandwidth": 0,
   "container": {
     "type": "DOCKER",
     "volumes": [

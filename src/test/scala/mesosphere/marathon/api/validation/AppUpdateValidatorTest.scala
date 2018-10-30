@@ -27,6 +27,7 @@ class AppUpdateValidatorTest extends UnitTest with Matchers {
           |  "mem": 128,
           |  "disk": 0,
           |  "gpus": 0,
+          |  "network_bandwidth": 0,
           |  "backoffSeconds": 1,
           |  "backoffFactor": 1.15,
           |  "maxLaunchDelaySeconds": 3600,
@@ -68,7 +69,8 @@ class AppUpdateValidatorTest extends UnitTest with Matchers {
             |  "mem": 128,
             |  "disk": 0,
             |  "gpus": 0,
-            |  "backoffSeconds": 1,
+            |  "network_bandwidth": 0,
+          |  "backoffSeconds": 1,
             |  "backoffFactor": 1.15,
             |  "maxLaunchDelaySeconds": 3600,
             |  "container": {

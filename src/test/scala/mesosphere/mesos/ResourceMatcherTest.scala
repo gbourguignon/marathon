@@ -77,7 +77,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         portDefinitions = PortDefinitions(0, 0)
       )
 
-      val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector)
+      val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector, config, Seq.empty)
 
       resourceMatchResponse shouldBe a[ResourceMatchResponse.Match]
       val res = resourceMatchResponse.asInstanceOf[ResourceMatchResponse.Match].resourceMatch
@@ -448,14 +448,13 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
     }
 
     "match resources fail on network bandwidth" in {
-      val offer = MarathonTestHelper.makeBasicOffer(mem = 0.1).build()
+      val offer = MarathonTestHelper.makeBasicOffer(networkBandwidth = 0.1).build()
       val app = AppDefinition(
         id = "/test".toRootPath,
         resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 100),
         portDefinitions = PortDefinitions(0, 0)
       )
-
-      val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector)
+      val resourceMatchResponse = ResourceMatcher.matchResources(offer, app, knownInstances = Seq.empty, unreservedResourceSelector, config, Seq.empty)
 
       resourceMatchResponse shouldBe a[ResourceMatchResponse.NoMatch]
     }
@@ -1071,13 +1070,13 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
       val gpuApp = AppDefinition(
         id = "/gpu".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -1110,13 +1109,13 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
       val gpuApp = AppDefinition(
         id = "/gpu".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 1, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -1194,7 +1193,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
@@ -1220,7 +1219,7 @@ class ResourceMatcherTest extends UnitTest with Inside with TableDrivenPropertyC
         .build()
       val app = AppDefinition(
         id = "/test".toRootPath,
-        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 2),
+        resources = Resources(cpus = 1.0, mem = 128.0, disk = 0.0, gpus = 2, networkBandwidth = 0),
         portDefinitions = PortDefinitions(0, 0)
       )
 
