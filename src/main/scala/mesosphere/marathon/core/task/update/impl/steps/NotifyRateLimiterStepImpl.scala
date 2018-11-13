@@ -36,6 +36,8 @@ class NotifyRateLimiterStepImpl @Inject() (
         notifyRateLimiter(update.runSpecId, update.instance.runSpecVersion.toOffsetDateTime, launchQueue.addDelay)
       case condition if advanceWorthy(condition) && update.stateUpdated =>
         notifyRateLimiter(update.runSpecId, update.instance.runSpecVersion.toOffsetDateTime, launchQueue.advanceDelay)
+      case condition if reduceWorthy(condition) =>
+        notifyRateLimiter(update.runSpecId, update.instance.runSpecVersion.toOffsetDateTime, launchQueue.decreaseDelay)
       case _ =>
         Future.successful(Done)
     }
@@ -60,6 +62,11 @@ private[steps] object NotifyRateLimiterStep {
 
   // A set of conditions that are worth advancing an existing delay of the corresponding runSpec
   val advanceWorthy: Set[Condition] = Set(
-    Condition.Staging, Condition.Starting, Condition.Running, Condition.Created
+    Condition.Staging, Condition.Starting, Condition.Created
+  )
+
+  // When one runSpec is Running/Healthy, we should decrease delay
+  val reduceWorthy: Set[Condition] = Set(
+    Condition.Running
   )
 }

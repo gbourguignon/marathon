@@ -1,6 +1,8 @@
 package mesosphere.marathon
 package core.launchqueue.impl
 
+import java.util.concurrent.TimeUnit
+
 import mesosphere.UnitTest
 import mesosphere.marathon.test.SettableClock
 import mesosphere.marathon.state.PathId._
@@ -28,8 +30,68 @@ class RateLimiterTest extends UnitTest {
 
       limiter.addDelay(app) // linter:ignore:IdenticalStatements
       limiter.addDelay(app)
+      limiter.addDelay(app)
 
-      limiter.getDeadline(app) should be(clock.now() + 20.seconds)
+      limiter.getDeadline(app) should be(clock.now() + 40.seconds)
+    }
+
+    "backoff delay can reach maximum backoff when below 2" in {
+      val limiter = new RateLimiter(clock)
+      val backoff = 100.seconds
+      val factor = 1.2
+      val app = AppDefinition(id = "test".toPath, backoffStrategy = BackoffStrategy(backoff = backoff, factor = factor))
+      limiter.decreaseDelay(app) // linter:ignore:IdenticalStatements
+      // if no delay has been added at first, it should keep the delay as it is
+      limiter.getDeadline(app) should be(clock.now() + backoff)
+      for (_ <- 1 to 1000) {
+        limiter.decreaseDelay(app)
+        limiter.addDelay(app)
+      }
+      limiter.getDeadline(app) should be(clock.now() + 1.hour)
+    }
+
+    "backoff delay can reach maximum backoff when under 2" in {
+      val limiter = new RateLimiter(clock)
+      val backoff = 100.seconds
+      val factor = 2
+      val app = AppDefinition(id = "test".toPath, backoffStrategy = BackoffStrategy(backoff = backoff, factor = factor))
+      limiter.decreaseDelay(app) // linter:ignore:IdenticalStatements
+      // if no delay has been added at first, it should keep the delay as it is
+      limiter.getDeadline(app) should be(clock.now() + backoff)
+      for (_ <- 1 to 1000) {
+        limiter.decreaseDelay(app)
+        limiter.addDelay(app)
+      }
+      limiter.getDeadline(app) should be(clock.now() + 1.hour)
+    }
+
+    "reduceDelay for existing delay" in {
+      val limiter = new RateLimiter(clock)
+      val backoff = 100.seconds
+      val factor = 2L
+      val app = AppDefinition(id = "test".toPath, backoffStrategy = BackoffStrategy(backoff = backoff, factor = factor))
+      limiter.decreaseDelay(app) // linter:ignore:IdenticalStatements
+      // if no delay has been added at first, it should keep the delay as it is
+      limiter.getDeadline(app) should be(clock.now() + backoff)
+      limiter.addDelay(app)
+      limiter.getDeadline(app) should be(clock.now() + (backoff * factor))
+      limiter.decreaseDelay(app)
+      val time = FiniteDuration(((backoff * factor).toNanos * ((1 - 1 / factor.toDouble) * 1.1)).toLong, TimeUnit.NANOSECONDS)
+      limiter.getDeadline(app) should be(clock.now() + time)
+    }
+
+    "reduceDelay never goes under minimum backoff" in {
+      val limiter = new RateLimiter(clock)
+      val backoff = 100.seconds
+      val factor = 5L
+      val app = AppDefinition(id = "test".toPath, backoffStrategy = BackoffStrategy(backoff = backoff, factor = factor))
+      limiter.decreaseDelay(app) // linter:ignore:IdenticalStatements
+      // if no delay has been added at first, it should keep the delay as it is
+      limiter.getDeadline(app) should be(clock.now() + backoff)
+      for (_ <- 1 to 1000) {
+        limiter.decreaseDelay(app)
+      }
+      limiter.getDeadline(app) should be(clock.now() + backoff)
     }
 
     "cleanUpOverdueDelays" in {
