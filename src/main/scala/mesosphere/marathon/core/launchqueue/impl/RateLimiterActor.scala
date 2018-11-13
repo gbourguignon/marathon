@@ -68,7 +68,9 @@ private class RateLimiterActor private (
       rateLimiter.addDelay(runSpec)
       launchQueueActor ! DelayUpdate(runSpec, rateLimiter.getDeadline(runSpec))
 
-    case DecreaseDelay(_) => // ignore for now
+    case DecreaseDelay(runSpec) =>
+      rateLimiter.decreaseDelay(runSpec)
+      launchQueueActor ! DelayUpdate(runSpec, rateLimiter.getDeadline(runSpec))
 
     case AdvanceDelay(runSpec) =>
       rateLimiter.advanceDelay(runSpec)
