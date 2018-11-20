@@ -8,7 +8,7 @@
         "mem": 128,
         "disk": 0,
         "gpus": 0,
-        "network_bandwidth": 0
+        "networkBandwidth": 0
       },
       "image": {
         "kind": "DOCKER",

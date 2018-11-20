@@ -76,7 +76,7 @@ class AppDefinitionFormatsTest extends UnitTest
       (r1 \ "mem").as[Double] should equal (App.DefaultMem)
       (r1 \ "disk").as[Double] should equal (App.DefaultDisk)
       (r1 \ "gpus").as[Int] should equal (App.DefaultGpus)
-      (r1 \ "network_bandwidth").as[Int] should equal (App.DefaultNetworkBandwidth)
+      (r1 \ "networkBandwidth").as[Int] should equal (App.DefaultNetworkBandwidth)
       (r1 \ "executor").as[String] should equal (App.DefaultExecutor)
       (r1 \ "constraints").asOpt[Set[Seq[String]]] should be (empty)
       (r1 \ "fetch").asOpt[Seq[Artifact]] should be (empty)
