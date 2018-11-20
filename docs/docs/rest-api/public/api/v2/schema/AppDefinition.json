@@ -555,7 +555,7 @@
      "description": "The amount of GPU cores that is needed for the application per instance.",
      "minimum": 0
     },
-    "network_bandwidth": {
+    "networkBandwidth": {
       "type": "integer",
       "description": "The amount of network bandwidth required for the application per instance.",
       "minimum": 0
