@@ -35,7 +35,7 @@ class RateLimiterTest extends UnitTest {
       limiter.getDeadline(app) should be(clock.now() + 40.seconds)
     }
 
-    "backoff delay can reach maximum backoff when below 2" in {
+    "backoff delay can reach maximum backoff when below 2 and above 1.1" in {
       val limiter = new RateLimiter(clock)
       val backoff = 100.seconds
       val factor = 1.2
@@ -48,6 +48,36 @@ class RateLimiterTest extends UnitTest {
         limiter.addDelay(app)
       }
       limiter.getDeadline(app) should be(clock.now() + 1.hour)
+    }
+
+    "maximum delay should be reached when factor under 1.1 and above 1 " in {
+      val limiter = new RateLimiter(clock)
+      val backoff = 100.seconds
+      val factor = 1.05
+      val app = AppDefinition(id = "test".toPath, backoffStrategy = BackoffStrategy(backoff = backoff, factor = factor))
+      limiter.decreaseDelay(app) // linter:ignore:IdenticalStatements
+      // if no delay has been added at first, it should keep the delay as it is
+      limiter.getDeadline(app) should be(clock.now() + backoff)
+      for (_ <- 1 to 1000) {
+        limiter.decreaseDelay(app)
+        limiter.addDelay(app)
+      }
+      limiter.getDeadline(app) should be(clock.now() + 1.hour)
+    }
+
+    "maximum delay should be never reached when factor 1" in {
+      val limiter = new RateLimiter(clock)
+      val backoff = 100.seconds
+      val factor = 1
+      val app = AppDefinition(id = "test".toPath, backoffStrategy = BackoffStrategy(backoff = backoff, factor = factor))
+      limiter.decreaseDelay(app) // linter:ignore:IdenticalStatements
+      // if no delay has been added at first, it should keep the delay as it is
+      limiter.getDeadline(app) should be(clock.now() + backoff)
+      for (_ <- 1 to 1000) {
+        limiter.decreaseDelay(app)
+        limiter.addDelay(app)
+      }
+      limiter.getDeadline(app) should be(clock.now() + 100.seconds)
     }
 
     "backoff delay can reach maximum backoff when under 2" in {

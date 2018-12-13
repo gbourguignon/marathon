@@ -105,11 +105,12 @@ private object RateLimiter {
     def decreased(clock: Clock, runSpec: RunSpec): Delay = {
       var factor = 0d
       if (runSpec.backoffStrategy.factor >= 2) {
-        factor = 1 - 1 / runSpec.backoffStrategy.factor
+        factor = (1 - 1 / runSpec.backoffStrategy.factor) * 1.1
+      } else if (runSpec.backoffStrategy.factor > 1.1) {
+        factor = (1 / runSpec.backoffStrategy.factor) * 1.1
       } else {
-        factor = 1 / runSpec.backoffStrategy.factor
+        factor = 1
       }
-      factor *= 1.1
       val newDelay: FiniteDuration =
         runSpec.backoffStrategy.backoff max FiniteDuration(
           currentDelay.toNanos.*(factor).toLong, TimeUnit.NANOSECONDS)
