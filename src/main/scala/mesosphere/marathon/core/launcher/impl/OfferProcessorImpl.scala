@@ -87,7 +87,7 @@ private[launcher] class OfferProcessorImpl(
     val raml = offerWrites(offer)
     val json = Json.toJson(raml)
     val compact = json.toString()
-    logger.info(s"Processing offer: $compact")
+    logger.debug(s"Processing offer: $compact")
   }
 
   override def processOffer(offer: Offer): Future[Done] = {
