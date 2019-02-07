@@ -620,19 +620,11 @@ object AppDefinition extends GeneralPurposeCombinators {
       appDefinition.resources.mem as "mem" is isTrue(PersistentVolumeResourcesChanged) { mem => from.resources.mem == mem }
       appDefinition.resources.disk as "disk" is isTrue(PersistentVolumeResourcesChanged) { disk => from.resources.disk == disk }
       appDefinition.resources.gpus as "gpus" is isTrue(PersistentVolumeResourcesChanged) { gpus => from.resources.gpus == gpus }
+      appDefinition.resources.networkBandwidth as "networkBandwidth" is isTrue(PersistentVolumeResourcesChanged) { networkBandwidth => from.resources.networkBandwidth == networkBandwidth }
       appDefinition.requirePorts is isTrue(PersistentVolumeResourcesChanged) { requirePorts => from.requirePorts == requirePorts }
       appDefinition is isTrue(PersistentVolumeHostPortsChanged) { to =>
-        from.resources.networkBandwidth == to.resources.networkBandwidth &&from.hostPorts.flatten.toSet == to.hostPorts.flatten.toSet
+        from.hostPorts.flatten.toSet == to.hostPorts.flatten.toSet
       }
-      /*
-            from.resources.cpus == to.resources.cpus &&
-          from.resources.mem == to.resources.mem &&
-          from.resources.disk == to.resources.disk &&
-          from.resources.gpus == to.resources.gpus &&
-          from.resources.networkBandwidth == to.resources.networkBandwidth &&
-          from.hostPorts.flatten.toSet == to.hostPorts.flatten.toSet &&
-          from.requirePorts == to.requirePorts
-       */
     }
 
     validator[AppDefinition] { app =>

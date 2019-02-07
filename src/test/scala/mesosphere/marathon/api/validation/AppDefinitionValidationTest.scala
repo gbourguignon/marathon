@@ -100,7 +100,7 @@ class AppDefinitionValidationTest extends UnitTest with ValidationTestLike {
         val app = validResidentApp
         val to = app.copy(resources = app.resources.copy(networkBandwidth = 3))
         AppDefinition.residentUpdateIsValid(app)(to) should haveViolations(
-          "/" -> "Resident Tasks may not change resource requirements!")
+          "/networkBandwidth" -> PersistentVolumeResourcesChanged)
       }
 
       "be invalid with default upgrade strategy" in new Fixture {
