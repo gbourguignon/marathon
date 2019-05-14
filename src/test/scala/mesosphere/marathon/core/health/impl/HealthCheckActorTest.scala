@@ -18,6 +18,7 @@ import org.mockito.Mockito.{verifyNoMoreInteractions, when}
 import scala.concurrent.Future
 
 class HealthCheckActorTest extends AkkaUnitTest {
+
   class Fixture {
     val tracker = mock[InstanceTracker]
 
@@ -39,6 +40,15 @@ class HealthCheckActorTest extends AkkaUnitTest {
     val appHealthCheckActor = TestProbe()
 
     val task: Task = instance.appTask
+
+    val appIdWithMinimumCapacity = "/testWithMinimumCapacity".toPath
+    val appVersionWithMinimumCapacity = Timestamp(1)
+    val appWithMinimumCapacity = AppDefinition(id = appIdWithMinimumCapacity)
+    when(appRepository.getVersion(appIdWithMinimumCapacity, appVersionWithMinimumCapacity.toOffsetDateTime)).thenReturn(Future.successful(Some(appWithMinimumCapacity)))
+    when(appRepository.getVersion(appId, appVersion.toOffsetDateTime)).thenReturn(Future.successful(Some(appWithMinimumCapacity)))
+    val instanceWithMinimumCapacityBuilder = TestInstanceBuilder.newBuilder(appIdWithMinimumCapacity, version = appVersionWithMinimumCapacity).addTaskRunning()
+    val instanceWithMinimumCapacity = instanceWithMinimumCapacityBuilder.getInstance()
+    val taskWithMinimumCapacity: Task = instanceWithMinimumCapacity.appTask
 
     val unreachableInstance = TestInstanceBuilder.newBuilder(appId).addTaskUnreachable().getInstance()
     val unreachableTask: Task = unreachableInstance.appTask
@@ -82,7 +92,7 @@ class HealthCheckActorTest extends AkkaUnitTest {
 
       val actor = f.actorWithLatch(latch)
       actor.underlyingActor.dispatchJobs(Seq(f.instance))
-      latch.isOpen should be (false)
+      latch.isOpen should be(false)
       verifyNoMoreInteractions(f.driver)
     }
 
@@ -93,7 +103,7 @@ class HealthCheckActorTest extends AkkaUnitTest {
       val actor = f.actorWithLatch(latch)
 
       actor.underlyingActor.dispatchJobs(Seq(f.unreachableInstance))
-      latch.isOpen should be (false)
+      latch.isOpen should be(false)
       verifyNoMoreInteractions(f.driver)
     }
 
@@ -104,7 +114,7 @@ class HealthCheckActorTest extends AkkaUnitTest {
       val actor = f.actorWithLatch(latch)
 
       actor.underlyingActor.dispatchJobs(Seq(f.unreachableInstance))
-      latch.isOpen should be (false)
+      latch.isOpen should be(false)
       verifyNoMoreInteractions(f.driver)
     }
 
@@ -115,6 +125,16 @@ class HealthCheckActorTest extends AkkaUnitTest {
 
       actor.underlyingActor.checkConsecutiveFailures(f.instance, Health(f.instance.instanceId, consecutiveFailures = 3))
       verify(f.killService).killInstancesAndForget(Seq(f.instance), KillReason.FailedHealthChecks)
+      verifyNoMoreInteractions(f.tracker, f.driver, f.scheduler)
+    }
+
+    // THIS TEST SHOULD FAIL FOR NOW
+    "task should not be killed if under minimumOverallCapacity" in {
+      val f = new Fixture
+      val actor = f.actor(MarathonHttpHealthCheck(maxConsecutiveFailures = 3, portIndex = Some(PortReference(0))))
+
+      actor.underlyingActor.checkConsecutiveFailures(f.instanceWithMinimumCapacity, Health(f.instance.instanceId, consecutiveFailures = 3))
+      verify(f.killService).killInstancesAndForget(Seq(f.instanceWithMinimumCapacity), KillReason.FailedHealthChecks)
       verifyNoMoreInteractions(f.tracker, f.driver, f.scheduler)
     }
 
