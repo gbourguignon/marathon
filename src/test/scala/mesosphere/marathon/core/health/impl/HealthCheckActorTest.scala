@@ -23,7 +23,7 @@ class HealthCheckActorTest extends AkkaUnitTest {
 
     val appId = "/test".toPath
     val appVersion = Timestamp(1)
-    val app = AppDefinition(id = appId)
+    val app = AppDefinition(id = appId, instances = 10)
     val appRepository: AppRepository = mock[AppRepository]
     val holder: MarathonSchedulerDriverHolder = new MarathonSchedulerDriverHolder
     val driver = mock[SchedulerDriver]
@@ -113,16 +113,30 @@ class HealthCheckActorTest extends AkkaUnitTest {
       val f = new Fixture
       val actor = f.actor(MarathonHttpHealthCheck(maxConsecutiveFailures = 3, portIndex = Some(PortReference(0))))
 
+      when(f.tracker.countActiveSpecInstances(any)) thenReturn (Future(10))
       actor.underlyingActor.checkConsecutiveFailures(f.instance, Health(f.instance.instanceId, consecutiveFailures = 3))
+      verify(f.tracker).countActiveSpecInstances(f.appId)
       verify(f.killService).killInstancesAndForget(Seq(f.instance), KillReason.FailedHealthChecks)
       verifyNoMoreInteractions(f.tracker, f.driver, f.scheduler)
+    }
+
+    "task should not be killed if health check fails and not enough tasks are running" in {
+      val f = new Fixture
+      val actor = f.actor(MarathonHttpHealthCheck(maxConsecutiveFailures = 3, portIndex = Some(PortReference(0))))
+
+      when(f.tracker.countActiveSpecInstances(any)) thenReturn (Future(8))
+      actor.underlyingActor.checkConsecutiveFailures(f.unreachableInstance, Health(f.instance.instanceId, consecutiveFailures = 3))
+      verify(f.tracker).countActiveSpecInstances(f.appId)
+      verifyNoMoreInteractions(f.tracker, f.driver, f.scheduler, f.killService)
     }
 
     "task should not be killed if health check fails, but the task is unreachable" in {
       val f = new Fixture
       val actor = f.actor(MarathonHttpHealthCheck(maxConsecutiveFailures = 3, portIndex = Some(PortReference(0))))
 
+      when(f.tracker.countActiveSpecInstances(any)) thenReturn (Future(10))
       actor.underlyingActor.checkConsecutiveFailures(f.unreachableInstance, Health(f.unreachableInstance.instanceId, consecutiveFailures = 3))
+      verify(f.tracker).countActiveSpecInstances(f.appId)
       verifyNoMoreInteractions(f.tracker, f.driver, f.scheduler)
     }
   }

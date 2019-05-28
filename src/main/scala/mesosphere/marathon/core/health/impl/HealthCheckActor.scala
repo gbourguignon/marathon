@@ -15,9 +15,10 @@ import mesosphere.marathon.core.task.termination.{KillReason, KillService}
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.state.{AppDefinition, Timestamp}
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import scala.language.postfixOps
 
 private[health] class HealthCheckActor(
     app: AppDefinition,
@@ -139,6 +140,10 @@ private[health] class HealthCheckActor(
       if (instance.isUnreachable) {
         logger.info(s"Instance $instanceId on host ${instance.agentInfo.host} is temporarily unreachable. Performing no kill.")
       } else {
+        if (!(checkEnoughInstancesRunning())) {
+          logger.info(s"Won't kill $instanceId because too few instances are running")
+          return
+        }
         logger.info(s"Send kill request for $instanceId on host ${instance.agentInfo.host} to driver")
         require(instance.tasksMap.size == 1, "Unexpected pod instance in HealthCheckActor")
         val taskId = instance.appTask.taskId
@@ -157,6 +162,11 @@ private[health] class HealthCheckActor(
         killService.killInstancesAndForget(Seq(instance), KillReason.FailedHealthChecks)
       }
     }
+  }
+
+  def checkEnoughInstancesRunning(): Boolean = {
+    val activeInstances = Await.result(instanceTracker.countActiveSpecInstances(app.id), 5 seconds)
+    (app.instances - activeInstances < 1)
   }
 
   def ignoreFailures(instance: Instance, health: Health): Boolean = {
