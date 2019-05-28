@@ -16,6 +16,7 @@ import org.apache.mesos.SchedulerDriver
 import org.mockito.Mockito.{verifyNoMoreInteractions, when}
 
 import scala.concurrent.Future
+import mesosphere.marathon.state.UpgradeStrategy
 
 class HealthCheckActorTest extends AkkaUnitTest {
   class Fixture {
@@ -23,7 +24,7 @@ class HealthCheckActorTest extends AkkaUnitTest {
 
     val appId = "/test".toPath
     val appVersion = Timestamp(1)
-    val app = AppDefinition(id = appId, instances = 10)
+    val app = AppDefinition(id = appId, instances = 10, upgradeStrategy = UpgradeStrategy(0.9, 1.1))
     val appRepository: AppRepository = mock[AppRepository]
     val holder: MarathonSchedulerDriverHolder = new MarathonSchedulerDriverHolder
     val driver = mock[SchedulerDriver]

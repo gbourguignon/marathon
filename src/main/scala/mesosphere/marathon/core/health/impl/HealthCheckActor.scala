@@ -166,7 +166,8 @@ private[health] class HealthCheckActor(
 
   def checkEnoughInstancesRunning(): Boolean = {
     val activeInstances = Await.result(instanceTracker.countActiveSpecInstances(app.id), 5 seconds)
-    (app.instances - activeInstances < 1)
+    val futureHealthyCapacity: Double = (activeInstances - 1) / app.instances.toDouble
+    futureHealthyCapacity >= app.upgradeStrategy.minimumHealthCapacity
   }
 
   def ignoreFailures(instance: Instance, health: Health): Boolean = {
