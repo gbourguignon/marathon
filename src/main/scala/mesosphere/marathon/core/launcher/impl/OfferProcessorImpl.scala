@@ -166,7 +166,8 @@ private[launcher] class OfferProcessorImpl(
 
     def saveTask(taskOpWithSource: InstanceOpWithSource): Future[Option[InstanceOpWithSource]] = {
       val taskId = taskOpWithSource.instanceId
-      logger.info(s"Processing ${taskOpWithSource.op.stateOp} for ${taskOpWithSource.instanceId}")
+      logger.info(s"Processing <long object redacted> for ${taskOpWithSource.instanceId}")
+      logger.debug(s"Processing ${taskOpWithSource.op.stateOp} for ${taskOpWithSource.instanceId}")
       instanceTracker
         .process(taskOpWithSource.op.stateOp)
         .map(_ => Some(taskOpWithSource))
