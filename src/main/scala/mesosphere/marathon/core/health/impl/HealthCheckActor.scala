@@ -17,7 +17,7 @@ import mesosphere.marathon.state.{AppDefinition, Timestamp}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 import scala.language.postfixOps
 
 private[health] class HealthCheckActor(
@@ -141,7 +141,7 @@ private[health] class HealthCheckActor(
         logger.info(s"Instance $instanceId on host ${instance.agentInfo.host} is temporarily unreachable. Performing no kill.")
       } else {
         if (!(checkEnoughInstancesRunning())) {
-          logger.info(s"Won't kill $instanceId because too few instances are running")
+          logger.info(s"[anti-snowball] Won't kill $instanceId because too few instances are running")
           return
         }
         logger.info(s"Send kill request for $instanceId on host ${instance.agentInfo.host} to driver")
@@ -159,7 +159,16 @@ private[health] class HealthCheckActor(
             timestamp = health.lastFailure.getOrElse(Timestamp.now()).toString
           )
         )
-        killService.killInstancesAndForget(Seq(instance), KillReason.FailedHealthChecks)
+        val killed = killService.killInstances(Seq(instance), KillReason.FailedHealthChecks)
+        Try(Await.ready(killed, 5 seconds)) match {
+          case Success(future) => future.value.get match {
+            case Success(done) =>
+              val activeInstances = Await.result(instanceTracker.countActiveSpecInstances(app.id), 5 seconds)
+              logger.info(s"Done killing $instanceId, $activeInstances remaining")
+            case Failure(t) => logger.error(s"An error has occurred: ${t.getMessage}", t)
+          }
+          case Failure(_) => logger.error(s"Timed out killing instance $instanceId")
+        }
       }
     }
   }
@@ -167,6 +176,7 @@ private[health] class HealthCheckActor(
   def checkEnoughInstancesRunning(): Boolean = {
     val activeInstances = Await.result(instanceTracker.countActiveSpecInstances(app.id), 5 seconds)
     val futureHealthyCapacity: Double = (activeInstances - 1) / app.instances.toDouble
+    logger.debug(s"[anti-snowball] checkEnoughInstancesRunning: $futureHealthyCapacity >= ${app.upgradeStrategy.minimumHealthCapacity}")
     futureHealthyCapacity >= app.upgradeStrategy.minimumHealthCapacity
   }
 
@@ -206,9 +216,12 @@ private[health] class HealthCheckActor(
             health.update(result)
         })
     }
-    updatedHealth.onComplete {
-      case Success(newHealth) => self ! InstanceHealth(result, health, newHealth)
-      case Failure(t) => logger.error(s"An error has occurred: ${t.getMessage}", t)
+    Try(Await.ready(updatedHealth, 5 seconds)) match {
+      case Success(future) => future.value.get match {
+        case Success(newHealth) => self ! InstanceHealth(result, health, newHealth)
+        case Failure(t) => logger.error(s"An error has occurred: ${t.getMessage}", t)
+      }
+      case Failure(_) => logger.error(s"Timed out updating health $instanceId")
     }
   }
 
