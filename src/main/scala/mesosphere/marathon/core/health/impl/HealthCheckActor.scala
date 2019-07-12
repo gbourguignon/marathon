@@ -15,9 +15,10 @@ import mesosphere.marathon.core.task.termination.{KillReason, KillService}
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.state.{AppDefinition, Timestamp}
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
+import scala.language.postfixOps
 
 private[health] class HealthCheckActor(
     app: AppDefinition,
@@ -139,6 +140,10 @@ private[health] class HealthCheckActor(
       if (instance.isUnreachable) {
         logger.info(s"Instance $instanceId on host ${instance.agentInfo.host} is temporarily unreachable. Performing no kill.")
       } else {
+        if (!(checkEnoughInstancesRunning())) {
+          logger.info(s"[anti-snowball] Won't kill $instanceId because too few instances are running")
+          return
+        }
         logger.info(s"Send kill request for $instanceId on host ${instance.agentInfo.host} to driver")
         require(instance.tasksMap.size == 1, "Unexpected pod instance in HealthCheckActor")
         val taskId = instance.appTask.taskId
@@ -154,8 +159,31 @@ private[health] class HealthCheckActor(
             timestamp = health.lastFailure.getOrElse(Timestamp.now()).toString
           )
         )
-        killService.killInstancesAndForget(Seq(instance), KillReason.FailedHealthChecks)
+        val killed = killService.killInstances(Seq(instance), KillReason.FailedHealthChecks)
+        Try(Await.ready(killed, 5 seconds)) match {
+          case Success(future) => future.value.get match {
+            case Success(done) =>
+              instanceTracker.countActiveSpecInstances(app.id).onComplete {
+                case Success(activeInstances) => logger.info(s"Done killing $instanceId, $activeInstances remaining")
+                case Failure(throwable) => logger.warn(s"[anti-snowball] Error when counting instance remaining: ${throwable.getMessage}. Since it is just for logging purpose, we don't care that much")
+              }
+            case Failure(t) => logger.error(s"An error has occurred: ${t.getMessage}", t)
+          }
+          case Failure(_) => logger.error(s"Timed out killing instance $instanceId")
+        }
       }
+    }
+  }
+
+  def checkEnoughInstancesRunning(): Boolean = {
+    Try(Await.result(instanceTracker.countActiveSpecInstances(app.id), 5 seconds)) match {
+      case Success(activeInstances) =>
+            val futureHealthyCapacity: Double = (activeInstances - 1) / app.instances.toDouble
+            logger.debug(s"[anti-snowball] checkEnoughInstancesRunning: $futureHealthyCapacity >= ${app.upgradeStrategy.minimumHealthCapacity}")
+            futureHealthyCapacity >= app.upgradeStrategy.minimumHealthCapacity
+      case Failure(_) =>
+        logger.error(s"[anti-snowball] Timeout when checking active instances. We'll stay safe")
+        false
     }
   }
 
@@ -177,7 +205,7 @@ private[health] class HealthCheckActor(
       case Healthy(_, _, _, _) =>
         Future(health.update(result))
       case Unhealthy(_, _, _, _, _) =>
-        instanceTracker.instance(instanceId).map({
+        var unhealthyFuture = instanceTracker.instance(instanceId).map({
           case Some(instance) =>
             if (ignoreFailures(instance, health)) {
               // Don't update health
@@ -194,6 +222,14 @@ private[health] class HealthCheckActor(
             logger.error(s"Couldn't find instance $instanceId")
             health.update(result)
         })
+        Try(Await.ready(unhealthyFuture, 5 seconds)) match {
+          case Success(future) => future.value.get match {
+            case Success(newHealth) => self ! InstanceHealth(result, health, newHealth)
+            case Failure(t) => logger.error(s"An error has occurred: ${t.getMessage}", t)
+          }
+          case Failure(_) => logger.error(s"Timed out updating health $instanceId")
+        }
+        unhealthyFuture
     }
     updatedHealth.onComplete {
       case Success(newHealth) => self ! InstanceHealth(result, health, newHealth)
