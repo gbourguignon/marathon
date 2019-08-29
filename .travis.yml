@@ -1,6 +1,7 @@
 
 # any change to this file upstream will conflict when we merge changes
 # deploy section has to remain intact but the rest can be resolved using upstream version
+dist: trusty
 sudo: false
 language: scala
 jdk:
