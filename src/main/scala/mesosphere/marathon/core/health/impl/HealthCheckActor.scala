@@ -162,7 +162,6 @@ private[health] class HealthCheckActor(
         )
         // TODO prevent killingInFlight from growing by cleaning killed instances (probably in purgeStatusOfDoneInstances)
         killingInFlight = killingInFlight + instanceId
-        logger.debug(s"[anti-snowball] killing ${instanceId}, killingInFlight = ${killingInFlight}")
         killService.killInstancesAndForget(Seq(instance), KillReason.FailedHealthChecks)
       }
     }
@@ -171,7 +170,6 @@ private[health] class HealthCheckActor(
   def checkEnoughInstancesRunning(): Boolean = {
     val instances: Seq[Instance] = instanceTracker.specInstancesSync(app.id)
     val activeInstanceIds: Set[Instance.Id] = instances.withFilter(_.isActive).map(_.instanceId)(collection.breakOut)
-    logger.debug(s"[anti-snowball] checkEnoughInstancesRunning: killingInFlight = ${killingInFlight}")
     val healthyInstances = healthByInstanceId.filterKeys(activeInstanceIds)
       .filterKeys(instanceId => !killingInFlight(instanceId))
       .count(_._2.firstSuccess.isDefined)
