@@ -90,6 +90,9 @@ private[health] class HealthCheckActor(
     // Therefore we materialize it into a new map.
     healthByInstanceId = healthByInstanceId.filterKeys(activeInstanceIds).iterator.toMap
 
+    // Remove inactive (definitively killed) instance from killingInFlight list
+    killingInFlight = killingInFlight.intersect(activeInstanceIds)
+
     val hcToPurge = instances.withFilter(!_.isActive).map(instance => {
       val instanceKey = InstanceKey(ApplicationKey(instance.runSpecId, instance.runSpecVersion), instance.instanceId)
       (instanceKey, healthCheck)
@@ -162,6 +165,7 @@ private[health] class HealthCheckActor(
         )
         // TODO prevent killingInFlight from growing by cleaning killed instances (probably in purgeStatusOfDoneInstances)
         killingInFlight = killingInFlight + instanceId
+        logger.debug(s"[anti-snowball] killing ${instanceId}, currently ${killingInFlight.size} instances killingInFlight")
         killService.killInstancesAndForget(Seq(instance), KillReason.FailedHealthChecks)
       }
     }
