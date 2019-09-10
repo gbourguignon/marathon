@@ -15,10 +15,9 @@ import mesosphere.marathon.core.task.termination.{KillReason, KillService}
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.state.{AppDefinition, Timestamp}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.util.{Try, Failure, Success}
-import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 private[health] class HealthCheckActor(
     app: AppDefinition,
@@ -33,6 +32,7 @@ private[health] class HealthCheckActor(
 
   var nextScheduledCheck: Option[Cancellable] = None
   var healthByInstanceId = Map.empty[Instance.Id, Health]
+  var killingInFlight = Set.empty[Instance.Id]
 
   val workerProps: Props = Props(classOf[HealthCheckWorkerActor], mat)
 
@@ -88,6 +88,9 @@ private[health] class HealthCheckActor(
     // The Map built with filterKeys wraps the original map and contains a reference to activeInstanceIds.
     // Therefore we materialize it into a new map.
     healthByInstanceId = healthByInstanceId.filterKeys(activeInstanceIds).iterator.toMap
+
+    // Remove inactive (definitively killed) instance from killingInFlight list
+    killingInFlight = killingInFlight.intersect(activeInstanceIds)
 
     val hcToPurge = instances.withFilter(!_.isActive).map(instance => {
       val instanceKey = InstanceKey(ApplicationKey(instance.runSpecId, instance.runSpecVersion), instance.instanceId)
@@ -159,32 +162,24 @@ private[health] class HealthCheckActor(
             timestamp = health.lastFailure.getOrElse(Timestamp.now()).toString
           )
         )
-        val killed = killService.killInstances(Seq(instance), KillReason.FailedHealthChecks)
-        Try(Await.ready(killed, 5 seconds)) match {
-          case Success(future) => future.value.get match {
-            case Success(done) =>
-              instanceTracker.countActiveSpecInstances(app.id).onComplete {
-                case Success(activeInstances) => logger.info(s"Done killing $instanceId, $activeInstances remaining")
-                case Failure(throwable) => logger.warn(s"[anti-snowball] Error when counting instance remaining: ${throwable.getMessage}. Since it is just for logging purpose, we don't care that much")
-              }
-            case Failure(t) => logger.error(s"An error has occurred: ${t.getMessage}", t)
-          }
-          case Failure(_) => logger.error(s"Timed out killing instance $instanceId")
-        }
+        killingInFlight = killingInFlight + instanceId
+        logger.debug(s"[anti-snowball] killing ${instanceId}, currently ${killingInFlight.size} instances killingInFlight")
+        killService.killInstancesAndForget(Seq(instance), KillReason.FailedHealthChecks)
       }
     }
   }
 
+  /** Check if enough active and ready instances will remain if we kill 1 unhealthy instance */
   def checkEnoughInstancesRunning(): Boolean = {
-    Try(Await.result(instanceTracker.countActiveSpecInstances(app.id), 5 seconds)) match {
-      case Success(activeInstances) =>
-            val futureHealthyCapacity: Double = (activeInstances - 1) / app.instances.toDouble
-            logger.debug(s"[anti-snowball] checkEnoughInstancesRunning: $futureHealthyCapacity >= ${app.upgradeStrategy.minimumHealthCapacity}")
-            futureHealthyCapacity >= app.upgradeStrategy.minimumHealthCapacity
-      case Failure(_) =>
-        logger.error(s"[anti-snowball] Timeout when checking active instances. We'll stay safe")
-        false
-    }
+    val instances: Seq[Instance] = instanceTracker.specInstancesSync(app.id)
+    val activeInstanceIds: Set[Instance.Id] = instances.withFilter(_.isActive).map(_.instanceId)(collection.breakOut)
+    val healthyInstances = healthByInstanceId.filterKeys(activeInstanceIds)
+      .filterKeys(instanceId => !killingInFlight(instanceId))
+      .count{ case (_, health) => health.ready }
+
+    val futureHealthyCapacity: Double = (healthyInstances - 1) / app.instances.toDouble
+    logger.debug(s"[anti-snowball] checkEnoughInstancesRunning: $futureHealthyCapacity >= ${app.upgradeStrategy.minimumHealthCapacity}")
+    futureHealthyCapacity >= app.upgradeStrategy.minimumHealthCapacity
   }
 
   def ignoreFailures(instance: Instance, health: Health): Boolean = {
@@ -205,7 +200,7 @@ private[health] class HealthCheckActor(
       case Healthy(_, _, _, _) =>
         Future(health.update(result))
       case Unhealthy(_, _, _, _, _) =>
-        var unhealthyFuture = instanceTracker.instance(instanceId).map({
+        instanceTracker.instance(instanceId).map({
           case Some(instance) =>
             if (ignoreFailures(instance, health)) {
               // Don't update health
@@ -215,21 +210,16 @@ private[health] class HealthCheckActor(
               if (result.publishEvent) {
                 eventBus.publish(FailedHealthCheck(app.id, instanceId, healthCheck))
               }
-              checkConsecutiveFailures(instance, health)
+              self ! InstanceHealthFailure(instance, health)
+              // FIXME here we break the behaviour by sending health update before the
+              // consecutive failures check is performed, but the original code was sending
+              // the health result before the killing even happened, so it is probably harmless
               health.update(result)
             }
           case None =>
             logger.error(s"Couldn't find instance $instanceId")
             health.update(result)
         })
-        Try(Await.ready(unhealthyFuture, 5 seconds)) match {
-          case Success(future) => future.value.get match {
-            case Success(newHealth) => self ! InstanceHealth(result, health, newHealth)
-            case Failure(t) => logger.error(s"An error has occurred: ${t.getMessage}", t)
-          }
-          case Failure(_) => logger.error(s"Timed out updating health $instanceId")
-        }
-        unhealthyFuture
     }
     updatedHealth.onComplete {
       case Success(newHealth) => self ! InstanceHealth(result, health, newHealth)
@@ -274,6 +264,9 @@ private[health] class HealthCheckActor(
     case instanceHealth: InstanceHealth =>
       updateInstanceHealth(instanceHealth)
 
+    case InstanceHealthFailure(instance, health) =>
+      checkConsecutiveFailures(instance, health)
+
     case result: HealthResult =>
       logger.warn(s"Ignoring health result [$result] due to version mismatch.")
 
@@ -309,4 +302,5 @@ object HealthCheckActor {
   case class InstanceHealth(result: HealthResult, health: Health, newHealth: Health)
   case class InstancesUpdate(version: Timestamp, instances: Seq[Instance])
 
+  case class InstanceHealthFailure(instance: Instance, health: Health)
 }
