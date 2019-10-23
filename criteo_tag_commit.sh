@@ -1,6 +1,11 @@
 #!/bin/bash
 
-CURRENT_BRANCH=$(git branch | grep '\*' | cut -d' ' -f 2)
+CURRENT_BRANCH=$TRAVIS_BRANCH
+
+if [[ -z "$CURRENT_BRANCH" ]]; then
+  # local mode
+  CURRENT_BRANCH=$(git branch | grep '\*' | cut -d' ' -f 2)
+fi
 
 echo $CURRENT_BRANCH
 
