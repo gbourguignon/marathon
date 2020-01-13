@@ -4,7 +4,7 @@ language: scala
 jdk:
 - oraclejdk8
 scala:
-- 2.12.3
+- 2.12.7
 git:
   depth: false
 cache:
