@@ -7,10 +7,10 @@ scala:
 - 2.12.7
 git:
   depth: false
-cache:
-  directories:
-  - "$HOME/.sbt"
-  - "$HOME/.ivy2"
+# cache:
+#   directories:
+#   - "$HOME/.sbt"
+#   - "$HOME/.ivy2"
 script:
 - sbt clean universal:packageZipTarball
 before_script:
