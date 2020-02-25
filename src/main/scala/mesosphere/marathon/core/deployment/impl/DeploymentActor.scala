@@ -9,10 +9,10 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.deployment._
-import mesosphere.marathon.core.deployment.impl.DeploymentActor.{Cancel, Fail, NextStep}
+import mesosphere.marathon.core.deployment.impl.DeploymentActor.{Cancel, Fail, GetInstancesHealth, InstancesHealth, NextStep}
 import mesosphere.marathon.core.deployment.impl.DeploymentManagerActor.DeploymentFinished
 import mesosphere.marathon.core.event.{AppTerminatedEvent, DeploymentStatus, DeploymentStepFailure, DeploymentStepSuccess}
-import mesosphere.marathon.core.health.HealthCheckManager
+import mesosphere.marathon.core.health.{Health, HealthCheckManager}
 import mesosphere.marathon.core.instance.{Goal, GoalChangeReason, Instance}
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.pod.PodDefinition
@@ -21,10 +21,11 @@ import mesosphere.marathon.core.task.termination.KillService
 import mesosphere.marathon.core.task.termination.impl.KillStreamWatcher
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.raml.Raml
-import mesosphere.marathon.state.{AppDefinition, RunSpec}
+import mesosphere.marathon.state.{AbsolutePathId, AppDefinition, RunSpec}
 import mesosphere.mesos.Constraints
 
 import scala.async.Async._
+import scala.collection.immutable.{Map, Seq}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
@@ -102,6 +103,8 @@ private class DeploymentActor(
       logger.debug(s"Deployment failed: planId=${plan.id}", t)
       deploymentManagerActor ! DeploymentFinished(plan, Failure(t))
       context.stop(self)
+
+    case GetInstancesHealth(appId) => sender() ! InstancesHealth(healthCheckManager.statuses(appId))
   }
 
   // scalastyle:off
@@ -229,6 +232,8 @@ object DeploymentActor {
   case class Cancel(reason: Throwable)
   case class Fail(reason: Throwable)
   case class DeploymentActionInfo(plan: DeploymentPlan, step: DeploymentStep, action: DeploymentAction)
+  case class GetInstancesHealth(appId: AbsolutePathId)
+  case class InstancesHealth(healthFuture: Future[Map[Instance.Id, Seq[Health]]])
 
   def props(
     deploymentManagerActor: ActorRef,
