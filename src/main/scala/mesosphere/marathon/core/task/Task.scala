@@ -221,7 +221,7 @@ object Task {
     *
     * This id can also represent an old reservation for a persistent app, ie an app with resident tasks.
     *
-    * The ids match [[Task.RegexPatterns.LegacyTaskId]].
+    * The ids match [[Task.RegexPatterns.LegacyTaskId]] or [[Task.RegexPatterns.NumberedLegacyTaskId]].
     *
     * Examples:
     *  - "myGroup_myApp.b6ff5fa5-7714-11e7-a55c-5ecf1c4671f6"
@@ -231,12 +231,14 @@ object Task {
     * @param separator This can be "." or "_".
     * @param uuid A unique identifier of the task.
     */
-  case class LegacyId(val runSpecId: PathId, separator: String, uuid: UUID) extends Id {
+  case class LegacyId(val runSpecId: PathId, separator: String, uuid: UUID, instanceNumber: Int = 0) extends Id {
+
+    val numberPrefix = if (instanceNumber > 0) "" + instanceNumber + "-" else ""
 
     // A stringifed version of the id.
-    override val idString: String = runSpecId.safePath + separator + uuid
+    override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid
 
-    override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid)
+    override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid, instanceNumber)
 
     override val reservationId = idString
 
@@ -247,7 +249,7 @@ object Task {
     * Identifier for a launched persistent app task, ie a resident task. These ids do not represent resident tasks for
     * pods, ie tasks in a Mesos group.
     *
-    * The ids match [[Task.RegexPatterns.ResidentTaskId ]].
+    * The ids match [[Task.RegexPatterns.ResidentTaskId]] or  [[Task.RegexPatterns.NumberedResidentTaskId]].
     *
     * Examples:
     *  - "myGroup_myApp.b6ff5fa5-7714-11e7-a55c-5ecf1c4671f6.42"
@@ -258,14 +260,16 @@ object Task {
     * @param uuid A unique identifier of the task.
     * @param attempt Counts how often a task has been launched on a specific reservation.
     */
-  case class LegacyResidentId(val runSpecId: PathId, separator: String, uuid: UUID, attempt: Long) extends Id {
+  case class LegacyResidentId(val runSpecId: PathId, separator: String, uuid: UUID, attempt: Long, instanceNumber: Int = 0) extends Id {
+
+    val numberPrefix = if (instanceNumber > 0) "" + instanceNumber + "-" else ""
 
     // A stringifed version of the id.
-    override val idString: String = runSpecId.safePath + separator + uuid + "." + attempt
+    override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid + "." + attempt
 
-    override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid)
+    override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid, instanceNumber)
 
-    override val reservationId = runSpecId.safePath + separator + uuid
+    override val reservationId = runSpecId.safePath + separator + numberPrefix + uuid
 
     override val containerName: Option[String] = None
   }
@@ -273,7 +277,8 @@ object Task {
   /**
     * Identifier of an ephemeral app or pod task.
     *
-    * The ids match [[Task.RegexPatterns.TaskIdWithInstanceId]]. They do not include any attempts.
+    * The ids match [[Task.RegexPatterns.TaskIdWithInstanceId]] or  [[Task.RegexPatterns.NumberedTaskIdWithInstanceId]].
+    * They do not include any attempts.
     *
     * Tasks belonging to a pod, ie a Mesos task group, share the same instance id but have each a different container
     * name. This is the container name specified in the containers section of the run spec.
@@ -301,7 +306,8 @@ object Task {
   /**
     * Identifier for a resident app or pod task, ie a task that launched on a reservation.
     *
-    * The ids match [[Task.RegexPatterns.ResidentTaskIdWithInstanceId]] and include a launch attempt.
+    * The ids match [[Task.RegexPatterns.ResidentTaskIdWithInstanceId]] or [[Task.RegexPatterns.NumberedResidentTaskIdWithInstanceId]]
+    * and include a launch attempt.
     *
     * Examples:
     *  - "myGroup_myApp.marathon-b6ff5fa5-7714-11e7-a55c-5ecf1c4671f6.$anon.1"
@@ -383,25 +389,25 @@ object Task {
       */
     def apply(idString: String): Task.Id = {
       idString match {
-        case RegexPatterns.NumberedResidentTaskIdWithInstanceId(safeRunSpecId, prefix, taskNumber, uuid, container, attempt) =>
+        case RegexPatterns.NumberedResidentTaskIdWithInstanceId(safeRunSpecId, prefix, instanceNumber, uuid, container, attempt) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
-          val instanceId = Instance.Id(runSpec, Instance.Prefix.fromString(prefix), UUID.fromString(uuid))
+          val instanceId = Instance.Id(runSpec, Instance.Prefix.fromString(prefix), UUID.fromString(uuid), instanceNumber.toInt)
           val containerName: Option[String] = if (container == Names.anonymousContainer) None else Some(container)
           ResidentTaskId(instanceId, containerName, attempt.toLong)
 
-        case RegexPatterns.NumberedTaskIdWithInstanceId(safeRunSpecId, prefix, taskNumber, uuid, container) =>
+        case RegexPatterns.NumberedTaskIdWithInstanceId(safeRunSpecId, prefix, instanceNumber, uuid, container) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
-          val instanceId = Instance.Id(runSpec, Instance.Prefix.fromString(prefix), UUID.fromString(uuid))
+          val instanceId = Instance.Id(runSpec, Instance.Prefix.fromString(prefix), UUID.fromString(uuid), instanceNumber.toInt)
           val containerName: Option[String] = if (container == Names.anonymousContainer) None else Some(container)
           EphemeralOrReservedTaskId(instanceId, containerName)
 
-        case RegexPatterns.NumberedResidentTaskId(safeRunSpecId, separator, taskNumber, uuid, _, attempt) =>
+        case RegexPatterns.NumberedResidentTaskId(safeRunSpecId, separator, instanceNumber, uuid, _, attempt) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
-          LegacyResidentId(runSpec, separator, UUID.fromString(uuid), attempt.toLong)
+          LegacyResidentId(runSpec, separator, UUID.fromString(uuid), attempt.toLong, instanceNumber.toInt)
 
-        case RegexPatterns.NumberedLegacyTaskId(safeRunSpecId, separator, taskNumber, uuid) =>
+        case RegexPatterns.NumberedLegacyTaskId(safeRunSpecId, separator, instanceNumber, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
-          LegacyId(runSpec, separator, UUID.fromString(uuid))
+          LegacyId(runSpec, separator, UUID.fromString(uuid), instanceNumber.toInt)
 
         case RegexPatterns.ResidentTaskIdWithInstanceId(safeRunSpecId, prefix, uuid, container, attempt) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
@@ -465,11 +471,11 @@ object Task {
         case ResidentTaskId(instanceId, containerName, attempt) =>
           val newAttempt = attempt + 1L
           ResidentTaskId(instanceId, containerName, newAttempt)
-        case LegacyResidentId(runSpecId, separator, uuid, attempt) =>
+        case LegacyResidentId(runSpecId, separator, uuid, attempt, instanceNumber) =>
           val newAttempt = attempt + 1L
-          LegacyResidentId(runSpecId, separator, uuid, newAttempt)
-        case LegacyId(runSpecId, separator, uuid) =>
-          LegacyResidentId(runSpecId, separator, uuid, 1L)
+          LegacyResidentId(runSpecId, separator, uuid, newAttempt, instanceNumber)
+        case LegacyId(runSpecId, separator, uuid, instanceNumber) =>
+          LegacyResidentId(runSpecId, separator, uuid, 1L, instanceNumber)
       }
     }
 

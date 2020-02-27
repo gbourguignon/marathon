@@ -58,7 +58,7 @@ class TaskIdTest extends UnitTest with Inside {
       // this is considered the first attempt
       newTaskId shouldBe a[Task.LegacyResidentId]
       inside(newTaskId) {
-        case Task.LegacyResidentId(_, _, _, attempt) =>
+        case Task.LegacyResidentId(_, _, _, attempt, _) =>
           attempt shouldBe 1
       }
 
@@ -71,14 +71,14 @@ class TaskIdTest extends UnitTest with Inside {
       val originalId = Task.Id(taskIdString)
       originalId shouldBe a[Task.LegacyResidentId]
       inside(originalId) {
-        case Task.LegacyResidentId(_, _, _, attempt) =>
+        case Task.LegacyResidentId(_, _, _, attempt, _) =>
           attempt should be(41)
       }
 
       val newTaskId = Task.Id.forResidentTask(originalId)
       newTaskId shouldBe a[Task.LegacyResidentId]
       inside(newTaskId) {
-        case Task.LegacyResidentId(_, _, _, attempt) =>
+        case Task.LegacyResidentId(_, _, _, attempt, _) =>
           attempt shouldBe 42
       }
 
@@ -135,28 +135,68 @@ class TaskIdTest extends UnitTest with Inside {
       podTaskIdWithContainerNameAndAttempt.reservationId shouldEqual "app.instance-4455cb85-0c16-490d-b84e-481f8321ff0a"
     }
 
-    "Numbered TaskId.reservationId remove number for all types of task ids" in {
+    "0 Numbered TaskId.reservationId remove number for all types of task ids" in {
       val uuid = "4455cb85-0c16-490d-b84e-481f8321ff0a"
-      val numbered_uuid = f"1-$uuid"
+      val numbered_uuid = f"0-$uuid"
       val appTaskId = Task.Id(f"app.$numbered_uuid")
       appTaskId shouldBe a[Task.LegacyId]
       appTaskId.idString shouldEqual f"app.$uuid"
       appTaskId.reservationId shouldEqual f"app.$uuid"
+      appTaskId.instanceId.executorIdString shouldEqual f"marathon-app.$uuid"
+      appTaskId.instanceId.idString shouldEqual f"app.marathon-$uuid"
 
       val appResidentTaskIdWithAttempt = Task.Id(f"app.$numbered_uuid.1")
       appResidentTaskIdWithAttempt shouldBe a[Task.LegacyResidentId]
       appResidentTaskIdWithAttempt.idString shouldEqual f"app.$uuid.1"
       appResidentTaskIdWithAttempt.reservationId shouldEqual f"app.$uuid"
+      appResidentTaskIdWithAttempt.instanceId.executorIdString shouldEqual f"marathon-app.$uuid"
+      appResidentTaskIdWithAttempt.instanceId.idString shouldEqual f"app.marathon-$uuid"
 
       val podTaskIdWithContainerName = Task.Id(f"app.instance-$numbered_uuid.ct")
       podTaskIdWithContainerName shouldBe a[Task.EphemeralOrReservedTaskId]
       podTaskIdWithContainerName.idString shouldEqual f"app.instance-$uuid.ct"
       podTaskIdWithContainerName.reservationId shouldEqual f"app.instance-$uuid"
+      podTaskIdWithContainerName.instanceId.executorIdString shouldEqual f"instance-app.$uuid"
+      podTaskIdWithContainerName.instanceId.idString shouldEqual f"app.instance-$uuid"
 
       val podTaskIdWithContainerNameAndAttempt = Task.Id(f"app.instance-$numbered_uuid.ct.1")
       podTaskIdWithContainerNameAndAttempt shouldBe a[Task.ResidentTaskId]
       podTaskIdWithContainerNameAndAttempt.idString shouldEqual f"app.instance-$uuid.ct.1"
       podTaskIdWithContainerNameAndAttempt.reservationId shouldEqual f"app.instance-$uuid"
+      podTaskIdWithContainerNameAndAttempt.instanceId.executorIdString shouldEqual f"instance-app.$uuid"
+      podTaskIdWithContainerNameAndAttempt.instanceId.idString shouldEqual f"app.instance-$uuid"
+    }
+
+    "Numbered TaskId.reservationId works as expected  for all types of task ids" in {
+      val uuid = "4455cb85-0c16-490d-b84e-481f8321ff0a"
+      val numbered_uuid = f"1-$uuid"
+      val appTaskId = Task.Id(f"app.$numbered_uuid")
+      appTaskId shouldBe a[Task.LegacyId]
+      appTaskId.idString shouldEqual f"app.$numbered_uuid"
+      appTaskId.reservationId shouldEqual f"app.$numbered_uuid"
+      appTaskId.instanceId.executorIdString shouldEqual f"marathon-app.$numbered_uuid"
+      appTaskId.instanceId.idString shouldEqual f"app.marathon-$numbered_uuid"
+
+      val appResidentTaskIdWithAttempt = Task.Id(f"app.$numbered_uuid.1")
+      appResidentTaskIdWithAttempt shouldBe a[Task.LegacyResidentId]
+      appResidentTaskIdWithAttempt.idString shouldEqual f"app.$numbered_uuid.1"
+      appResidentTaskIdWithAttempt.reservationId shouldEqual f"app.$numbered_uuid"
+      appResidentTaskIdWithAttempt.instanceId.executorIdString shouldEqual f"marathon-app.$numbered_uuid"
+      appResidentTaskIdWithAttempt.instanceId.idString shouldEqual f"app.marathon-$numbered_uuid"
+
+      val podTaskIdWithContainerName = Task.Id(f"app.instance-$numbered_uuid.ct")
+      podTaskIdWithContainerName shouldBe a[Task.EphemeralOrReservedTaskId]
+      podTaskIdWithContainerName.idString shouldEqual f"app.instance-$numbered_uuid.ct"
+      podTaskIdWithContainerName.reservationId shouldEqual f"app.instance-$numbered_uuid"
+      podTaskIdWithContainerName.instanceId.executorIdString shouldEqual f"instance-app.$numbered_uuid"
+      podTaskIdWithContainerName.instanceId.idString shouldEqual f"app.instance-$numbered_uuid"
+
+      val podTaskIdWithContainerNameAndAttempt = Task.Id(f"app.instance-$numbered_uuid.ct.1")
+      podTaskIdWithContainerNameAndAttempt shouldBe a[Task.ResidentTaskId]
+      podTaskIdWithContainerNameAndAttempt.idString shouldEqual f"app.instance-$numbered_uuid.ct.1"
+      podTaskIdWithContainerNameAndAttempt.reservationId shouldEqual f"app.instance-$numbered_uuid"
+      podTaskIdWithContainerNameAndAttempt.instanceId.executorIdString shouldEqual f"instance-app.$numbered_uuid"
+      podTaskIdWithContainerNameAndAttempt.instanceId.idString shouldEqual f"app.instance-$numbered_uuid"
     }
   }
 }
