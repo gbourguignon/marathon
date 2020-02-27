@@ -237,13 +237,14 @@ object Instance {
     }
   }
 
-  case class Id(val runSpecId: PathId, val prefix: Prefix, uuid: UUID) extends Ordered[Id] {
+  case class Id(val runSpecId: PathId, val prefix: Prefix, uuid: UUID, instanceNumber: Int = 0) extends Ordered[Id] {
     lazy val safeRunSpecId = runSpecId.safePath
-    lazy val executorIdString: String = prefix + safeRunSpecId + "." + uuid
+    val numberPrefix = if (instanceNumber > 0) f"${instanceNumber}%04d." else ""
+    lazy val executorIdString: String = prefix + safeRunSpecId + "." + numberPrefix + uuid
 
     // Must match Id.InstanceIdRegex
     // TODO: Unit test against regex
-    lazy val idString = safeRunSpecId + "." + prefix + uuid
+    lazy val idString = safeRunSpecId + "." + prefix + numberPrefix + uuid
 
     /**
       * String representation used for logging and debugging. Should *not* be used for Mesos task ids. Use `idString`
@@ -272,7 +273,7 @@ object Instance {
       idString match {
         case Task.RegexPatterns.NumberedInstanceId(safeRunSpecId, prefix, instanceNumber, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
-          Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
+          Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid), instanceNumber.toInt)
         case InstanceIdRegex(safeRunSpecId, prefix, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
@@ -290,10 +291,10 @@ object Instance {
       reservationId match {
         case Task.RegexPatterns.NumberedInstanceId(safeRunSpecId, prefix, instanceNumber, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
-          Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
+          Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid), instanceNumber.toInt)
         case Task.RegexPatterns.NumberedReservationId(safeRunSpecId, separator, instanceNumber, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
-          Id(runSpec, PrefixMarathon, UUID.fromString(uuid))
+          Id(runSpec, PrefixMarathon, UUID.fromString(uuid), instanceNumber.toInt)
 
         case InstanceIdRegex(safeRunSpecId, prefix, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)

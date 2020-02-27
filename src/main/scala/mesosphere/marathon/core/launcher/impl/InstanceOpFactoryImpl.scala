@@ -95,15 +95,37 @@ class InstanceOpFactoryImpl(
     }
   }
 
+  private def mustUseStableNumber(app: AppDefinition): Boolean = {
+    scala.util.Properties.envOrElse("REUSE_ID", "").toLowerCase() match {
+      case "never" => false
+      case "default" => app.env.getOrElse("MUST_REUSE_ID", null) != EnvVarString("FALSE")
+      case _ => app.env.getOrElse("MUST_REUSE_ID", null) == EnvVarString("TRUE")
+    }
+  }
+
+  private def getFirstAvailableInstanceNumber(app: AppDefinition, instances: Map[Instance.Id, Instance]) = {
+    var found = 0
+    if (mustUseStableNumber(app)) {
+      // first check in conf if we use remanent id
+      val usedIds = instances.keys.map(k => k.instanceNumber).filter(v => v > 0).toSet
+      found = 1
+      while (usedIds.contains(found))
+        found = found + 1
+    }
+    found
+  }
+
   private[this] def inferNormalTaskOp(app: AppDefinition, request: InstanceOpFactory.Request): OfferMatchResult = {
     val InstanceOpFactory.Request(runSpec, offer, instances, _, localRegion) = request
+
+    var id = 1
 
     val matchResponse =
       RunSpecOfferMatcher.matchOffer(app, offer, instances.values.toIndexedSeq,
         config.defaultAcceptedResourceRolesSet, config, schedulerPlugins, localRegion)
     matchResponse match {
       case matches: ResourceMatchResponse.Match =>
-        val taskId = Task.Id.forRunSpec(app.id)
+        val taskId = Task.Id.forRunSpec(app.id, instanceNumber = getFirstAvailableInstanceNumber(app, instances))
         val taskBuilder = new TaskBuilder(app, taskId, config, runSpecTaskProc)
         val (taskInfo, networkInfo) = taskBuilder.build(request.offer, matches.resourceMatch, None)
         val task = Task(
