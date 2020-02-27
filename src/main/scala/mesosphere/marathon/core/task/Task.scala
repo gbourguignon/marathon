@@ -324,6 +324,26 @@ object Task {
     override lazy val reservationId: String = instanceId.idString
   }
 
+  object RegexPatterns {
+    val Uuid = """[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}"""
+    val Separator = """[\._]"""
+    val NoSeparators = """[^_\.]+"""
+    val Prefix = "instance-|marathon-"
+    val Point = """\."""
+    var Number = """\d+"""
+
+    val LegacyTaskId = f"^(.+)($Separator)($Uuid)$$".r
+    val ResidentTaskId = f"^(.+)($Separator)($Uuid)($Point)($Number)$$".r
+
+    // Regular expression for matching taskIds since instance-era
+    val TaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Uuid)$Separator($NoSeparators)$$".r
+    val ResidentTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Uuid)$Separator($NoSeparators)$Point($Number)$$".r
+
+    val InstanceId = f"^(.+)$Point($Prefix)($Uuid)$$".r
+
+    val ReservationId = f"^(.+)($Separator)($Uuid)$$".r
+  }
+
   object Id {
 
     @SuppressWarnings(Array("LooksLikeInterpolatedString"))
@@ -331,12 +351,6 @@ object Task {
       val anonymousContainer = "$anon" // presence of `$` is important since it's illegal for a real container name!
     }
     // Regular expression for matching taskIds before instance-era
-    private val LegacyTaskIdRegex = """^(.+)([\._])([^_\.]+)$""".r
-    private val ResidentTaskIdRegex = """^(.+)([\._])([^_\.]+)(\.)(\d+)$""".r
-
-    // Regular expression for matching taskIds since instance-era
-    private val TaskIdWithInstanceIdRegex = """^(.+)\.(instance-|marathon-)([^_\.]+)[\._]([^_\.]+)$""".r
-    private val ResidentTaskIdWithInstanceIdRegex = """^(.+)\.(instance-|marathon-)([^_\.]+)[\._]([^_\.]+)\.(\d+)$""".r
 
     private val uuidGenerator = Generators.timeBasedGenerator(EthernetAddress.fromInterface())
 
@@ -344,31 +358,31 @@ object Task {
       * Parse instance and task id from idString.
       *
       * The string has to match one of
-      *   * LegacyTaskIdRegex
-      *   * ResidentTaskIdRegex
-      *   * TaskIdWithInstanceIdRegex
-      *   * ResidentTaskIdWithInstanceIdRegex
+      *   * RegexPatterns.LegacyTaskId
+      *   * RegexPatterns.ResidentTaskId
+      *   * RegexPatterns.TaskIdWithInstanceId
+      *   * RegexPatterns.ResidentTaskIdWithInstanceId
       *
       * @param idString The raw id that should be parsed.
       * @return Task.Id
       */
     def apply(idString: String): Task.Id = {
       idString match {
-        case ResidentTaskIdWithInstanceIdRegex(safeRunSpecId, prefix, uuid, container, attempt) =>
+        case RegexPatterns.ResidentTaskIdWithInstanceId(safeRunSpecId, prefix, uuid, container, attempt) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           val instanceId = Instance.Id(runSpec, Instance.Prefix.fromString(prefix), UUID.fromString(uuid))
           val containerName: Option[String] = if (container == Names.anonymousContainer) None else Some(container)
           ResidentTaskId(instanceId, containerName, attempt.toLong)
-        case TaskIdWithInstanceIdRegex(safeRunSpecId, prefix, uuid, container) =>
+        case RegexPatterns.TaskIdWithInstanceId(safeRunSpecId, prefix, uuid, container) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           val instanceId = Instance.Id(runSpec, Instance.Prefix.fromString(prefix), UUID.fromString(uuid))
           val containerName: Option[String] = if (container == Names.anonymousContainer) None else Some(container)
 
           EphemeralOrReservedTaskId(instanceId, containerName)
-        case ResidentTaskIdRegex(safeRunSpecId, separator, uuid, _, attempt) =>
+        case RegexPatterns.ResidentTaskId(safeRunSpecId, separator, uuid, _, attempt) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           LegacyResidentId(runSpec, separator, UUID.fromString(uuid), attempt.toLong)
-        case LegacyTaskIdRegex(safeRunSpecId, separator, uuid) =>
+        case RegexPatterns.LegacyTaskId(safeRunSpecId, separator, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           LegacyId(runSpec, separator, UUID.fromString(uuid))
         case _ => throw new MatchError(s"taskId $idString no valid identifier")

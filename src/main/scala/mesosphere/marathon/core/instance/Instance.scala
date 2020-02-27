@@ -262,9 +262,7 @@ object Instance {
   object Id {
     // Regular expression to extract runSpecId from instanceId
     // instanceId = $runSpecId.(instance-|marathon-)$uuid
-    val InstanceIdRegex: Regex = """^(.+)\.(instance-|marathon-)([^\.]+)$""".r
-
-    private val ReservationIdRegex = """^(.+)([\._])([^_\.]+)$""".r
+    val InstanceIdRegex: Regex = Task.RegexPatterns.InstanceId
 
     private val uuidGenerator = Generators.timeBasedGenerator(EthernetAddress.fromInterface())
 
@@ -290,7 +288,7 @@ object Instance {
         case InstanceIdRegex(safeRunSpecId, prefix, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
-        case ReservationIdRegex(safeRunSpecId, separator, uuid) =>
+        case Task.RegexPatterns.ReservationId(safeRunSpecId, separator, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           Id(runSpec, PrefixMarathon, UUID.fromString(uuid))
         case _ => throw new MatchError(s"reservation id $reservationId does not include a valid instance identifier")
