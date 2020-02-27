@@ -445,7 +445,7 @@ object Task {
       * Use @forResidentTask when you want to launch a task on an existing reservation.
       */
     @deprecated("Task ids should be created from instance ids and not run spec ids", "1.6.322")
-    def forRunSpec(id: PathId): Id = LegacyId(id, ".", uuidGenerator.generate())
+    def forRunSpec(id: PathId, instanceNumber: Int = 0): Id = LegacyId(id, ".", uuidGenerator.generate(), instanceNumber = instanceNumber)
 
     /**
       * Create a taskId for a pod instance's task. This will create a taskId designating the instance and each
