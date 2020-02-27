@@ -270,6 +270,9 @@ object Instance {
 
     def fromIdString(idString: String): Instance.Id = {
       idString match {
+        case Task.RegexPatterns.NumberedInstanceId(safeRunSpecId, prefix, instanceNumber, uuid) =>
+          val runSpec = PathId.fromSafePath(safeRunSpecId)
+          Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
         case InstanceIdRegex(safeRunSpecId, prefix, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
@@ -285,6 +288,13 @@ object Instance {
       */
     def fromReservationId(reservationId: String): Instance.Id = {
       reservationId match {
+        case Task.RegexPatterns.NumberedInstanceId(safeRunSpecId, prefix, instanceNumber, uuid) =>
+          val runSpec = PathId.fromSafePath(safeRunSpecId)
+          Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
+        case Task.RegexPatterns.NumberedReservationId(safeRunSpecId, separator, instanceNumber, uuid) =>
+          val runSpec = PathId.fromSafePath(safeRunSpecId)
+          Id(runSpec, PrefixMarathon, UUID.fromString(uuid))
+
         case InstanceIdRegex(safeRunSpecId, prefix, uuid) =>
           val runSpec = PathId.fromSafePath(safeRunSpecId)
           Id(runSpec, Prefix.fromString(prefix), UUID.fromString(uuid))
