@@ -2,7 +2,7 @@ dist: xenial
 sudo: false
 language: scala
 jdk:
-- oraclejdk9
+- oraclejdk8
 scala:
 - 2.12.7
 git:
@@ -15,8 +15,8 @@ script:
 - sbt clean universal:packageZipTarball
 before_script:
 # - "./criteo_tag_commit.sh"
-# - mkdir -p $HOME/.sbt/launchers/0.13.11/
-# - test -r $HOME/.sbt/launchers/0.13.11/sbt-launch.jar || curl -L -o $HOME/.sbt/launchers/0.13.11/sbt-launch.jar http://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.11/sbt-launch.jar
+- mkdir -p $HOME/.sbt/launchers/1.3.8/
+- test -r $HOME/.sbt/launchers/1.3.8/sbt-launch.jar || curl -L -o $HOME/.sbt/launchers/1.3.8/sbt-launch.jar https://dl.bintray.com/sbt/maven-releases/org/scala-sbt/sbt-launch/1.3.8/sbt-launch.jar
 - echo $JVM_OPTS
 - echo $SBT_OPTS && cat /etc/sbt/sbtopts
 # - cat /usr/local/bin/sbt
