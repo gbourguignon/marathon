@@ -2,7 +2,7 @@ dist: xenial
 sudo: false
 language: scala
 jdk:
-- oraclejdk8
+- oraclejdk9
 scala:
 - 2.12.7
 git:
