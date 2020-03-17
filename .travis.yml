@@ -19,6 +19,7 @@ before_script:
 # - test -r $HOME/.sbt/launchers/0.13.11/sbt-launch.jar || curl -L -o $HOME/.sbt/launchers/0.13.11/sbt-launch.jar http://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.13.11/sbt-launch.jar
 - echo $JVM_OPTS
 - echo $SBT_OPTS && cat /etc/sbt/sbtopts
+- cat /usr/local/bin/sbt
 - sbt about
 - sbt -V -d
 before_deploy:
