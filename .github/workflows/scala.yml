@@ -1,5 +1,4 @@
 ---
-
 name: Scala CI
 
 on: [push, pull_request]
@@ -14,5 +13,12 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
+      - name: Build artifact
+        run: sbt clean universal:packageZipTarball
       - name: Run tests
         run: sbt test
+      - name: Publish artifact
+        uses: actions/upload-artifact@v2-preview
+        if: success()
+        with:
+          path: target/universal/marathon*.tgz
