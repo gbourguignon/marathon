@@ -13,18 +13,24 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
-      - name: test
+      # - name: test
+      #   run: |
+      #     go version
+      #     go get -v -u github.com/tcnksm/ghr
+      #     ghr --help
+      - name: Build artifact
+        run: sbt clean universal:packageZipTarball
+      - name: Identify artifact
+        id: identify_artifact
         run: |
-          go version
-          go get -v -u github.com/tcnksm/ghr
-          ghr --help
-      # - name: Build artifact
-      #   run: sbt clean universal:packageZipTarball
+          echo "##[set-output name=path;]$(ls -1 target/universal/marathon-*.tgz)"
+          echo "##[set-output name=artifact;]$(basename $(ls -1 target/universal/marathon-*.tgz))"
       # - name: Run tests
       #   run: sbt test
-      # - name: Publish artifact
-      #   uses: actions/upload-artifact@v2-preview
-      #   if: success()
-      #   with:
-      #     name: marathon.tgz
-      #     path: target/universal/marathon*.tgz
+      - name: Publish artifact
+        uses: actions/upload-artifact@v2-preview
+        if: success()
+        with:
+          name: ${{ steps.identify_artifact.outputs.artifact }}
+          path: ${{ steps.identify_artifact.outputs.path }}
+          # path: target/universal/marathon*.tgz
