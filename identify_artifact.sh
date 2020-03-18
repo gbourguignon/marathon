@@ -8,6 +8,7 @@ git describe
 git describe --tags
 git tag
 git branch
+git log --oneline | wc -l
 ./version tag
 ls -l target/universal
 echo "::set-output name=path::$artifact_path"
