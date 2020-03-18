@@ -22,9 +22,7 @@ jobs:
         run: sbt clean universal:packageZipTarball
       - name: Identify artifact
         id: identify_artifact
-        run: |
-          echo "##[set-output name=path;]$(ls -1 target/universal/marathon-*.tgz)"
-          echo "##[set-output name=artifact;]$(basename `ls -1 target/universal/marathon-*.tgz`)"
+        run: ./identify_artifact.sh
       # - name: Run tests
       #   run: sbt test
       - name: Publish artifact
