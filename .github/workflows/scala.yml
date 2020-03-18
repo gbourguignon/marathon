@@ -24,7 +24,7 @@ jobs:
         id: identify_artifact
         run: |
           echo "##[set-output name=path;]$(ls -1 target/universal/marathon-*.tgz)"
-          echo "##[set-output name=artifact;]$(basename $(ls -1 target/universal/marathon-*.tgz))"
+          echo "##[set-output name=artifact;]$(basename `ls -1 target/universal/marathon-*.tgz`)"
       # - name: Run tests
       #   run: sbt test
       - name: Publish artifact
