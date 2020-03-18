@@ -6,6 +6,8 @@ artifact_version="$(echo $artifact | sed -E 's/marathon-(.*)\.tgz/\1/')"
 
 git describe
 git describe --tags
+git tag
+git branch
 ./version tag
 ls -l target/universal
 echo "::set-output name=path::$artifact_path"

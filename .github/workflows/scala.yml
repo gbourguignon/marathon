@@ -20,8 +20,8 @@ jobs:
       #     go version
       #     go get -v -u github.com/tcnksm/ghr
       #     ghr --help
-      - name: Build artifact
-        run: sbt clean universal:packageZipTarball
+      # - name: Build artifact
+      #   run: sbt clean universal:packageZipTarball
       - name: Identify artifact
         id: identify_artifact
         run: ./identify_artifact.sh
