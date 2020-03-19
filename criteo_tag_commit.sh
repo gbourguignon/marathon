@@ -42,7 +42,7 @@ then
   CRITEO_TAG="v$BASE_VERSION-$CRITEO_PATCH"
   echo "tagging current commit with $CRITEO_TAG"
   git tag $CRITEO_TAG
-  git remote add github https://${GH_TOKEN}@github.com/criteo-forks/marathon > /dev/null 2>&1
+  git remote add github https://${GITHUB_TOKEN}@github.com/criteo-forks/marathon
   git push --quiet github --tags
   updateVersion $CRITEO_TAG
 else
