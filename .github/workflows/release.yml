@@ -13,8 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      # Fetch all history for all tags and branches
-      - run: |
+      - name: Fetch all history for all tags and branches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           git fetch --prune --unshallow
           ./criteo_tag_commit.sh
       - name: Set up JDK 1.8
