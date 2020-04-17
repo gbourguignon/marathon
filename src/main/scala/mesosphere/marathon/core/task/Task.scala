@@ -190,6 +190,8 @@ object Task {
     // A stringifed version of the id.
     val idString: String
 
+    val reusableIdString: String
+
     // Quick access to the underlying run spec identifier of the task.
     val runSpecId: PathId
 
@@ -238,6 +240,8 @@ object Task {
     // A stringifed version of the id.
     override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid
 
+    override val reusableIdString: String = if (instanceNumber > 0) s"${runSpecId.safePath}_$instanceNumber" else null
+
     override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid, instanceNumber)
 
     override val reservationId = idString
@@ -266,6 +270,8 @@ object Task {
 
     // A stringifed version of the id.
     override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid + "." + attempt
+
+    override val reusableIdString: String = if (instanceNumber > 0) s"${runSpecId.safePath}_$instanceNumber" else null
 
     override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid, instanceNumber)
 
@@ -297,6 +303,8 @@ object Task {
     // A stringifed version of the id.
     override val idString = instanceId.idString + "." + containerName.getOrElse(Id.Names.anonymousContainer)
 
+    override val reusableIdString: String = null
+
     // Quick access to the underlying run spec identifier of the task.
     override lazy val runSpecId: PathId = instanceId.runSpecId
 
@@ -323,6 +331,8 @@ object Task {
 
     // A stringifed version of the id.
     override val idString = instanceId.idString + "." + containerName.getOrElse(Id.Names.anonymousContainer) + "." + attempt
+
+    override val reusableIdString: String = null
 
     // Quick access to the underlying run spec identifier of the task.
     override lazy val runSpecId: PathId = instanceId.runSpecId
