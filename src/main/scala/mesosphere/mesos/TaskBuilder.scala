@@ -10,6 +10,7 @@ import mesosphere.marathon.plugin.task.RunSpecTaskProcessor
 import mesosphere.marathon.state._
 import mesosphere.marathon.stream.Implicits._
 import mesosphere.mesos.ResourceMatcher.ResourceMatch
+import mesosphere.mesos.TaskBuilder.getLabels
 import mesosphere.mesos.protos.Implicits._
 import mesosphere.mesos.protos.ScalarResource
 import org.apache.mesos.Protos.Environment._
@@ -44,8 +45,10 @@ class TaskBuilder(
 
     builder.setDiscovery(computeDiscoveryInfo(runSpec, resourceMatch.hostPorts))
 
-    if (runSpec.labels.nonEmpty)
-      builder.setLabels(runSpec.labels.toMesosLabels)
+    // MARATHON_REUSABLE_ID
+    if (runSpec.labels.nonEmpty) {
+      builder.setLabels(getLabels(runSpec, taskId).toMesosLabels)
+    }
 
     volumeMatchOpt.foreach(_.persistentVolumeResources.foreach(builder.addResources))
 
@@ -258,6 +261,13 @@ object TaskBuilder {
     }
   }
 
+  def getLabels(runSpec: AppDefinition, taskId: Task.Id): Map[String, String] = {
+    if (taskId.reusableIdString != null)
+      runSpec.labels + ("MARATHON_REUSABLE_ID" -> taskId.reusableIdString)
+    else
+      runSpec.labels
+  }
+
   def taskContextEnv(runSpec: AppDefinition, taskId: Option[Task.Id]): Map[String, String] = {
     if (taskId.isEmpty) {
       // This branch is taken during serialization. Do not add environment variables in this case.
@@ -265,6 +275,7 @@ object TaskBuilder {
     } else {
       val envVars: Map[String, String] = Seq(
         "MESOS_TASK_ID" -> taskId.map(_.idString),
+        "MARATHON_REUSABLE_ID" -> Option(taskId.get.reusableIdString),
         "MARATHON_APP_ID" -> Some(runSpec.id.toString),
         "MARATHON_APP_VERSION" -> Some(runSpec.version.toString),
         "MARATHON_APP_DOCKER_IMAGE" -> runSpec.container.flatMap(_.docker.map(_.image)),
@@ -276,7 +287,7 @@ object TaskBuilder {
       ).collect {
           case (key, Some(value)) => key -> value
         }(collection.breakOut)
-      envVars ++ EnvironmentHelper.labelsToEnvVars(runSpec.labels)
+      envVars ++ EnvironmentHelper.labelsToEnvVars(getLabels(runSpec, taskId.get))
     }
   }
 }
