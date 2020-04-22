@@ -3,11 +3,11 @@ package core.task
 
 import java.util.{Base64, UUID}
 
-import com.fasterxml.uuid.{EthernetAddress, Generators}
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.condition.Condition.Terminal
 import mesosphere.marathon.core.instance.Instance
+import mesosphere.marathon.core.uidwithnumber.UidWithNumber
 import mesosphere.marathon.core.pod.MesosContainer
 import mesosphere.marathon.core.task.state.NetworkInfo
 import mesosphere.marathon.core.task.update.TaskUpdateEffect
@@ -352,7 +352,7 @@ object Task {
     }
     // Regular expression for matching taskIds before instance-era
 
-    private val uuidGenerator = Generators.timeBasedGenerator(EthernetAddress.fromInterface())
+    private val uuidGenerator = new UidWithNumber
 
     /**
       * Parse instance and task id from idString.
@@ -404,7 +404,7 @@ object Task {
       * Use @forResidentTask when you want to launch a task on an existing reservation.
       */
     @deprecated("Task ids should be created from instance ids and not run spec ids", "1.6.322")
-    def forRunSpec(id: PathId): Id = LegacyId(id, ".", uuidGenerator.generate())
+    def forRunSpec(id: PathId, instanceNumber: Int = 0): Id = LegacyId(id, ".", uuidGenerator.generate(instanceNumber))
 
     /**
       * Create a taskId for a pod instance's task. This will create a taskId designating the instance and each
