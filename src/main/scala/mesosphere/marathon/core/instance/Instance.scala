@@ -3,10 +3,10 @@ package core.instance
 
 import java.util.{Base64, UUID}
 
-import com.fasterxml.uuid.{EthernetAddress, Generators}
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.Instance.{AgentInfo, InstanceState}
 import mesosphere.marathon.core.task.Task
+import mesosphere.marathon.core.uidwithnumber.UidWithNumber
 import mesosphere.marathon.state.{PathId, Timestamp, UnreachableDisabled, UnreachableEnabled, UnreachableStrategy, _}
 import mesosphere.marathon.stream.Implicits._
 import mesosphere.marathon.tasks.OfferUtil
@@ -287,7 +287,10 @@ object Instance {
   case class Id(val runSpecId: PathId, val prefix: Prefix, uuid: UUID) extends Ordered[Id] {
     lazy val safeRunSpecId = runSpecId.safePath
     lazy val executorIdString: String = prefix + safeRunSpecId + "." + uuid
-
+    lazy val instanceReusableNumber = if (uuid.variant == 0)
+      (uuid.getLeastSignificantBits() & 0xFFFFFFFFL).intValue() else 0
+    lazy val reusableIdString: String = if (instanceReusableNumber > 0)
+      s"${safeRunSpecId}_${instanceReusableNumber}" else null
     // Must match Id.InstanceIdRegex
     // TODO: Unit test against regex
     lazy val idString = safeRunSpecId + "." + prefix + uuid
@@ -311,9 +314,9 @@ object Instance {
     // instanceId = $runSpecId.(instance-|marathon-)$uuid
     val InstanceIdRegex: Regex = """^(.+)\.(instance-|marathon-)([^\.]+)$""".r
 
-    private val uuidGenerator = Generators.timeBasedGenerator(EthernetAddress.fromInterface())
+    private val uuidGenerator = new UidWithNumber
 
-    def forRunSpec(id: PathId): Id = Instance.Id(id, PrefixInstance, uuidGenerator.generate())
+    def forRunSpec(id: PathId, instanceNumber: Int = 0): Id = Instance.Id(id, PrefixInstance, uuidGenerator.generate(instanceNumber))
 
     def fromIdString(idString: String): Instance.Id = {
       idString match {
