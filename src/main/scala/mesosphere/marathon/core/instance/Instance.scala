@@ -120,7 +120,7 @@ object Instance {
    * @param runSpec The run spec the instance will be started for.
    * @return An instance in the scheduled state.
    */
-  def scheduled(runSpec: RunSpec): Instance = scheduled(runSpec, Id.forRunSpec(runSpec.id))
+  def scheduled(runSpec: RunSpec, instanceNumber: Int = 0): Instance = scheduled(runSpec, Id.forRunSpec(runSpec.id, instanceNumber))
 
   /**
     * Describes the state of an instance which is an accumulation of task states.

@@ -9,7 +9,7 @@ class UidWithNumber {
   private val uuidGenerator = Generators.timeBasedGenerator(EthernetAddress.fromInterface())
 
   def generate(number: Int): UUID = {
-    var uid = uuidGenerator.generate()
+    val uid = uuidGenerator.generate()
     if (number > 0) {
       // put version to 0 (instead of 2)
       // n.b. doesn't work with negative numbers

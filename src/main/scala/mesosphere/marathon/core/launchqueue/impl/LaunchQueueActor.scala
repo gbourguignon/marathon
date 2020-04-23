@@ -19,13 +19,32 @@ import mesosphere.marathon.core.launchqueue.LaunchQueueConfig
 import mesosphere.marathon.core.launchqueue.impl.LaunchQueueActor.{AddFinished, QueuedAdd}
 import mesosphere.marathon.core.launchqueue.impl.LaunchQueueDelegate.Add
 import mesosphere.marathon.core.task.tracker.InstanceTracker
-import mesosphere.marathon.state.{PathId, RunSpec}
+import mesosphere.marathon.state.{EnvVarString, PathId, RunSpec}
 
 import scala.async.Async.{async, await}
 import scala.collection.mutable.Queue
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
+
+private class InstanceNumberFinder(runSpec: RunSpec, instances: Seq[Instance]) {
+  val mustUseStableNumber: Boolean = if (runSpec != null)
+    (runSpec.env.getOrElse("MUST_REUSE_ID", null) == EnvVarString("TRUE")) else false
+  var found: Int = 0
+  val usedIds = if (mustUseStableNumber)
+    instances.filter(i => !(i.hasReservation && i.state.condition.isTerminal && i.state.goal == Goal.Stopped))
+      .map(instance => instance.instanceId.instanceReusableNumber)
+      .filter(_ > 0).toSet
+  else null
+  def next(): Int = {
+    if (mustUseStableNumber) {
+      do
+        found = found + 1
+      while (usedIds.contains(found))
+    }
+    found
+  }
+}
 
 private[launchqueue] object LaunchQueueActor {
   def props(
@@ -183,12 +202,13 @@ private[impl] class LaunchQueueActor(
     processingAddOperation = true
 
     val future = async {
-      val runSpec = queuedItem.add.spec
+      val runSpec: RunSpec = queuedItem.add.spec
       // Trigger TaskLaunchActor creation and sync with instance tracker.
       launchers.getOrElse(runSpec.id, createAppTaskLauncher(runSpec))
-
+      val allInstances = await(instanceTracker.specInstances(pathId = runSpec.id))
       // Reuse resident instances that are stopped.
-      val existingReservedStoppedInstances = await(instanceTracker.specInstances(runSpec.id))
+      val instanceNumberFinder = new InstanceNumberFinder(runSpec, allInstances)
+      val existingReservedStoppedInstances = allInstances
         .filter(i => i.hasReservation && i.state.condition.isTerminal && i.state.goal == Goal.Stopped) // resident to relaunch
         .take(queuedItem.add.count)
       await(Future.sequence(existingReservedStoppedInstances.map { instance => instanceTracker.process(RescheduleReserved(instance.instanceId, runSpec)) }))
@@ -196,7 +216,9 @@ private[impl] class LaunchQueueActor(
       logger.debug(s"Rescheduled existing instances for ${runSpec.id}")
 
       // Schedule additional resident instances or all ephemeral instances
-      val instancesToSchedule = existingReservedStoppedInstances.length.until(queuedItem.add.count).map { _ => Instance.scheduled(runSpec, Instance.Id.forRunSpec(runSpec.id)) }
+      val instancesToSchedule = existingReservedStoppedInstances.length.until(queuedItem.add.count).map {
+        _ => Instance.scheduled(runSpec, Instance.Id.forRunSpec(runSpec.id, instanceNumberFinder.next()))
+      }
       if (instancesToSchedule.nonEmpty) {
         await(instanceTracker.schedule(instancesToSchedule))
       }
