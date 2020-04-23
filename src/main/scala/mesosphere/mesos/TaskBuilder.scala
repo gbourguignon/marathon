@@ -270,8 +270,11 @@ object TaskBuilder {
       // This branch is taken during serialization. Do not add environment variables in this case.
       Map.empty
     } else {
+      val reusableId = Option(taskId.get.instanceId.reusableIdString)
       val envVars: Map[String, String] = Seq(
         "MESOS_TASK_ID" -> taskId.map(_.idString),
+        "MARATHON_REUSABLE_ID" -> reusableId,
+        s"${EnvironmentHelper.labelEnvironmentKeyPrefix}MARATHON_REUSABLE_ID" -> reusableId,
         "MARATHON_APP_ID" -> Some(runSpec.id.toString),
         "MARATHON_APP_VERSION" -> Some(runSpec.version.toString),
         "MARATHON_APP_DOCKER_IMAGE" -> runSpec.container.collect { case c: Docker => c.image },
