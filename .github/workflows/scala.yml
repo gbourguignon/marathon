@@ -2,7 +2,7 @@ name: Scala CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, "feature/instances_with_numbers" ]
   pull_request:
     branches: [ master ]
 
