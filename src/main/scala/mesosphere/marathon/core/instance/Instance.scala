@@ -239,7 +239,7 @@ object Instance {
 
   case class Id(val runSpecId: PathId, val prefix: Prefix, uuid: UUID, instanceNumber: Int = 0) extends Ordered[Id] {
     lazy val safeRunSpecId = runSpecId.safePath
-    val numberPrefix = if (instanceNumber > 0) "" + instanceNumber + "-" else ""
+    val numberPrefix = if (instanceNumber > 0) f"${instanceNumber}%04d." else ""
     lazy val executorIdString: String = prefix + safeRunSpecId + "." + numberPrefix + uuid
 
     // Must match Id.InstanceIdRegex

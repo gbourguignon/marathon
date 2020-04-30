@@ -235,7 +235,7 @@ object Task {
     */
   case class LegacyId(val runSpecId: PathId, separator: String, uuid: UUID, instanceNumber: Int = 0) extends Id {
 
-    val numberPrefix = if (instanceNumber > 0) "" + instanceNumber + "-" else ""
+    val numberPrefix = if (instanceNumber > 0) f"${instanceNumber}%04d." else ""
 
     // A stringifed version of the id.
     override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid
@@ -266,7 +266,7 @@ object Task {
     */
   case class LegacyResidentId(val runSpecId: PathId, separator: String, uuid: UUID, attempt: Long, instanceNumber: Int = 0) extends Id {
 
-    val numberPrefix = if (instanceNumber > 0) "" + instanceNumber + "-" else ""
+    val numberPrefix = if (instanceNumber > 0) f"${instanceNumber}%04d." else ""
 
     // A stringifed version of the id.
     override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid + "." + attempt
@@ -359,16 +359,16 @@ object Task {
 
     val ReservationId = f"^(.+)($Separator)($Uuid)$$".r
 
-    val NumberedLegacyTaskId = f"^(.+)($Separator)($Number)-($Uuid)$$".r
-    val NumberedResidentTaskId = f"^(.+)($Separator)($Number)-($Uuid)($Point)($Number)$$".r
+    val NumberedLegacyTaskId = f"^(.+)($Separator)($Number)[-\\.]($Uuid)$$".r
+    val NumberedResidentTaskId = f"^(.+)($Separator)($Number)[-\\.]($Uuid)($Point)($Number)$$".r
 
     // Regular expression for matching taskIds since instance-era
-    val NumberedTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)-($Uuid)$Separator($NoSeparators)$$".r
-    val NumberedResidentTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)-($Uuid)$Separator($NoSeparators)$Point($Number)$$".r
+    val NumberedTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)[-\\.]($Uuid)$Separator($NoSeparators)$$".r
+    val NumberedResidentTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)[-\\.]($Uuid)$Separator($NoSeparators)$Point($Number)$$".r
 
-    val NumberedInstanceId = f"^(.+)$Point($Prefix)($Number)-($Uuid)$$".r
+    val NumberedInstanceId = f"^(.+)$Point($Prefix)($Number)[-\\.]($Uuid)$$".r
 
-    val NumberedReservationId = f"^(.+)($Separator)($Number)-($Uuid)$$".r
+    val NumberedReservationId = f"^(.+)($Separator)($Number)[-\\.]($Uuid)$$".r
   }
 
   object Id {
