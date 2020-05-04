@@ -96,7 +96,11 @@ class InstanceOpFactoryImpl(
   }
 
   private def mustUseStableNumber(app: AppDefinition): Boolean = {
-    (app.env.getOrElse("MUST_REUSE_ID", null) == EnvVarString("TRUE"))
+    scala.util.Properties.envOrElse("REUSE_ID", "").toLowerCase() match {
+      case "never" => false
+      case "default" => app.env.getOrElse("MUST_REUSE_ID", null) != EnvVarString("FALSE")
+      case _ => app.env.getOrElse("MUST_REUSE_ID", null) == EnvVarString("TRUE")
+    }
   }
 
   private def getFirstAvailableInstanceNumber(app: AppDefinition, instances: Map[Instance.Id, Instance]) = {
