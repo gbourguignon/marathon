@@ -359,16 +359,16 @@ object Task {
 
     val ReservationId = f"^(.+)($Separator)($Uuid)$$".r
 
-    val NumberedLegacyTaskId = f"^(.+)($Separator)($Number)$Point($Uuid)$$".r
-    val NumberedResidentTaskId = f"^(.+)($Separator)($Number)$Point($Uuid)($Point)($Number)$$".r
+    val NumberedLegacyTaskId = f"^(.+)($Separator)($Number)[-\\.]($Uuid)$$".r
+    val NumberedResidentTaskId = f"^(.+)($Separator)($Number)[-\\.]($Uuid)($Point)($Number)$$".r
 
     // Regular expression for matching taskIds since instance-era
-    val NumberedTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)$Point($Uuid)$Separator($NoSeparators)$$".r
-    val NumberedResidentTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)$Point($Uuid)$Separator($NoSeparators)$Point($Number)$$".r
+    val NumberedTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)[-\\.]($Uuid)$Separator($NoSeparators)$$".r
+    val NumberedResidentTaskIdWithInstanceId = f"^(.+)$Point($Prefix)($Number)[-\\.]($Uuid)$Separator($NoSeparators)$Point($Number)$$".r
 
-    val NumberedInstanceId = f"^(.+)$Point($Prefix)($Number)$Point($Uuid)$$".r
+    val NumberedInstanceId = f"^(.+)$Point($Prefix)($Number)[-\\.]($Uuid)$$".r
 
-    val NumberedReservationId = f"^(.+)($Separator)($Number)$Point($Uuid)$$".r
+    val NumberedReservationId = f"^(.+)($Separator)($Number)[-\\.]($Uuid)$$".r
   }
 
   object Id {
