@@ -240,7 +240,7 @@ object Task {
     // A stringifed version of the id.
     override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid
 
-    override val reusableIdString: String = if (instanceNumber > 0) s"${runSpecId.safePath}_$instanceNumber" else null
+    override val reusableIdString: String = if (instanceNumber > 0) f"${runSpecId.safePath}_${instanceNumber}%04d" else null
 
     override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid, instanceNumber)
 
@@ -271,7 +271,7 @@ object Task {
     // A stringifed version of the id.
     override val idString: String = runSpecId.safePath + separator + numberPrefix + uuid + "." + attempt
 
-    override val reusableIdString: String = if (instanceNumber > 0) s"${runSpecId.safePath}_$instanceNumber" else null
+    override val reusableIdString: String = if (instanceNumber > 0) f"${runSpecId.safePath}_${instanceNumber}%04d" else null
 
     override lazy val instanceId: Instance.Id = Instance.Id(runSpecId, Instance.PrefixMarathon, uuid, instanceNumber)
 
