@@ -58,11 +58,11 @@ class TaskStatusUpdateProcessorImpl @Inject() (
             Future.successful(killService.killUnknownTask(taskId, KillReason.NotInSync))
           }
         }
-        acknowledge(status)
+        acknowledge(status, instance)
 
       case Some(instance) =>
         // TODO(PODS): we might as well pass the taskCondition here
-        instanceTracker.updateStatus(instance, status, now).flatMap(_ => acknowledge(status))
+        instanceTracker.updateStatus(instance, status, now).flatMap(_ => acknowledge(status, instance))
 
       case None if terminalUnknown(taskCondition) =>
         logger.warn(s"Received terminal status update for unknown ${taskId}")
@@ -79,13 +79,14 @@ class TaskStatusUpdateProcessorImpl @Inject() (
       case maybeTask: Option[Instance] =>
         val taskStr = taskKnownOrNotStr(maybeTask)
         logger.info(s"Ignoring ${status.getState} update for $taskStr $taskId")
-        acknowledge(status)
+        acknowledge(status, maybeTask.getOrElse(null))
     }
   }
 
-  private[this] def acknowledge(status: MesosProtos.TaskStatus): Future[Unit] = {
+  private[this] def acknowledge(status: MesosProtos.TaskStatus, instance: Instance=null): Future[Unit] = {
     driverHolder.driver.foreach{ driver =>
-      logger.info(s"Acknowledge status update for task ${status.getTaskId.getValue}: ${status.getState} (${status.getMessage})")
+      val instr = if (instance != null) s" in  ${instance.hostname}" else ""
+      logger.info(s"Acknowledge status update for task ${status.getTaskId.getValue}: ${status.getState} (${status.getMessage}) ${instr}")
       driver.acknowledgeStatusUpdate(status)
     }
     Future.successful(())
