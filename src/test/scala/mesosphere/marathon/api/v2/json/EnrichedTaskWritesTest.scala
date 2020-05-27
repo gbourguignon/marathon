@@ -71,6 +71,7 @@ class EnrichedTaskWritesTest extends UnitTest {
         |  "id": "${f.taskWithoutIp.task.taskId.idString}",
         |  "ipAddresses" : [],
         |  "host": "agent1.mesos",
+        |  "labels": { },
         |  "state": "TASK_STAGING",
         |  "ports": [],
         |  "servicePorts" : [],
@@ -92,6 +93,7 @@ class EnrichedTaskWritesTest extends UnitTest {
         |  "healthCheckResults" : [],
         |  "id": "${f.taskWithMultipleIPs.task.taskId.idString}",
         |  "host": "agent1.mesos",
+        |  "labels": { },
         |  "state": "TASK_STAGING",
         |  "ipAddresses": [
         |    {

@@ -4,6 +4,7 @@ uses:
   localVolumes: localVolumes.raml
   numbers: numberTypes.raml
   strings: stringTypes.raml
+  label: label.raml
 
 types:
 
@@ -44,6 +45,7 @@ types:
       host: string
       id: string
       ipAddresses?: IpAddr[]
+      labels?: label.KVLabels
       ports?: numbers.Port[]
       servicePorts?: numbers.Port[]
       slaveId?: string

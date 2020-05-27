@@ -103,7 +103,7 @@ object InstanceUpdater extends StrictLogging {
           val status = op.statuses.getOrElse(
             newTaskId,
             throw new IllegalStateException("failed to retrieve a task status"))
-          val launchedTask = Task(taskId = newTaskId, runSpecVersion = op.runSpecVersion, status = status)
+          val launchedTask = Task(taskId = newTaskId, runSpecVersion = op.runSpecVersion, status = status, taskLabels = None)
           TaskUpdateEffect.Update(launchedTask)
       }
 

@@ -57,7 +57,8 @@ class InstanceOpFactoryImplTest extends UnitTest with Inside {
             hostPorts = Nil,
             ipAddresses = Nil
           )
-        )
+        ),
+        taskLabels = Option(Map.empty[String, String])
       )
       val expectedAgentInfo = Instance.AgentInfo(
         host = f.defaultHostName,

@@ -19,6 +19,21 @@ import org.apache.mesos.v1.scheduler.scheduler.{Call, Event}
 import scala.concurrent.{ExecutionContext, Future}
 
 trait MesosClient {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
   /**
     * The frameworkId as which this client is currently connected.
     */
@@ -33,6 +48,7 @@ trait MesosClient {
   def connectionInfo: MesosClient.ConnectionInfo
 
   /**
+  t
     * Set of helper factory methods that can be used for constructing various calls that the framework will make, to be
     * send to Mesos via the `mesosSink`. These calls will have the Frameworks FrameworkID and will automatically include
     * them in the instantiated call. **Note** none of the methods in this factory object have side effects.

@@ -24,6 +24,7 @@ object TaskConversion extends HealthConversion with DefaultConversions {
     Task(
       appId = enrichedTask.appId.toRaml,
       healthCheckResults = enrichedTask.healthCheckResults.toRaml,
+      labels = task.getLabels,
       host = enrichedTask.agentInfo.host,
       id = task.taskId.idString,
       ipAddresses = ipAddresses,

@@ -18,6 +18,7 @@ import mesosphere.marathon.plugin.task.RunSpecTaskProcessor
 import mesosphere.marathon.plugin.{ApplicationSpec, PodSpec}
 import mesosphere.marathon.state._
 import mesosphere.marathon.stream.Implicits._
+import mesosphere.marathon.tasks.TaskLabelGetter
 import mesosphere.mesos.ResourceMatcher.ResourceSelector
 import mesosphere.mesos.{DiskResourceMatch, NoOfferMatchReason, PersistentVolumeMatcher, ResourceMatchResponse, ResourceMatcher, RunSpecOfferMatcher, TaskBuilder, TaskGroupBuilder}
 import mesosphere.util.state.FrameworkId
@@ -113,7 +114,8 @@ class InstanceOpFactoryImpl(
             stagedAt = clock.now(),
             condition = Condition.Created,
             networkInfo = networkInfo
-          )
+          ),
+          taskLabels = Option(TaskLabelGetter.getLabels(taskInfo.getLabels))
         )
 
         val agentInfo = AgentInfo(offer)
@@ -351,7 +353,8 @@ class InstanceOpFactoryImpl(
             condition = Condition.Reserved,
             networkInfo = networkInfo
           ),
-          runSpecVersion = runSpec.version
+          runSpecVersion = runSpec.version,
+          taskLabels = None
         )
 
         val instance = Instance(
@@ -391,7 +394,8 @@ class InstanceOpFactoryImpl(
               networkInfo = networkInfos.getOrElse(
                 taskId, throw new Exception("failed to retrieve a task network info"))
             ),
-            runSpecVersion = runSpec.version
+            runSpecVersion = runSpec.version,
+            taskLabels = None
           )
         }
 
@@ -483,7 +487,8 @@ object InstanceOpFactoryImpl {
         val task = Task(
           taskId = taskId,
           runSpecVersion = pod.version,
-          status = Task.Status(stagedAt = since, condition = Condition.Created, networkInfo = networkInfo)
+          status = Task.Status(stagedAt = since, condition = Condition.Created, networkInfo = networkInfo),
+          taskLabels = None
         )
         task.taskId -> task
       }(collection.breakOut),

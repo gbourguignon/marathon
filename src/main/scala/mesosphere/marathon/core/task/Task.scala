@@ -63,9 +63,14 @@ import play.api.libs.json._
   * unreserve operations. See https://github.com/mesosphere/marathon/issues/3223
   */
 
-case class Task(taskId: Task.Id, runSpecVersion: Timestamp, status: Task.Status) extends StrictLogging {
+case class Task(taskId: Task.Id, runSpecVersion: Timestamp, status: Task.Status,
+    taskLabels: Option[Map[String, String]] = None) extends StrictLogging {
 
   def runSpecId: PathId = taskId.runSpecId
+
+  def getLabels: Map[String, String] = {
+    if (taskLabels.nonEmpty) taskLabels.get else Map.empty[String, String]
+  }
 
   private[this] def hasStartedRunning: Boolean = status.startedAt.isDefined
 
@@ -100,11 +105,13 @@ case class Task(taskId: Task.Id, runSpecVersion: Timestamp, status: Task.Status)
       // case 1: running
       case Condition.Running if !hasStartedRunning =>
         val updatedNetworkInfo = status.networkInfo.update(newMesosStatus)
-        val updatedTask = copy(status = status.copy(
-          mesosStatus = Some(newMesosStatus),
-          condition = Condition.Running,
-          startedAt = Some(now),
-          networkInfo = updatedNetworkInfo))
+        val updatedTask = copy(
+          status = status.copy(
+            mesosStatus = Some(newMesosStatus),
+            condition = Condition.Running,
+            startedAt = Some(now),
+            networkInfo = updatedNetworkInfo)
+        )
         TaskUpdateEffect.Update(newState = updatedTask)
 
       // case 2: terminal; extractor applies specific logic e.g. when an Unreachable task becomes Gone
@@ -122,7 +129,11 @@ case class Task(taskId: Task.Id, runSpecVersion: Timestamp, status: Task.Status)
       case _ if status.condition == Condition.Reserved =>
         if (newStatus.isActive) {
           val updatedStatus = status.copy(startedAt = Some(now), mesosStatus = Some(newMesosStatus))
-          val updatedTask = Task(taskId = taskId, status = updatedStatus, runSpecVersion = runSpecVersion)
+          val updatedTask = Task(
+            taskId = taskId, status = updatedStatus,
+            runSpecVersion = runSpecVersion,
+            taskLabels = taskLabels
+          )
           TaskUpdateEffect.Update(updatedTask)
         } else {
           TaskUpdateEffect.Noop
